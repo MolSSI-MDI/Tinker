@@ -18,6 +18,6 @@ cd ..
 # Compile Tinker
 cp ../make/buildmake.py .
 ./buildmake.py ../source/*.f > Makefile
-sed -i 's/-L$(FFTWDIR)/-Lfftw_install/g' Makefile
+sed -i '' 's/-L$(FFTWDIR)/-Lfftw_install/g' Makefile
 cp ../source/* .
 make -j 4
