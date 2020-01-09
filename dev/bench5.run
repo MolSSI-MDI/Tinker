@@ -1,0 +1,1 @@
+time ../build/tinker/source/dynamic.x bench5 -mdi "-name MM -role ENGINE -method TEST" 1000 1.0 10.0 2 298.0 778.0

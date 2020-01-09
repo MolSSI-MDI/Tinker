@@ -55,6 +55,11 @@ endif
 FFTW_LIBDIR := -L$(FFTWDIR)/lib
 FFTW_LIBS := -lfftw3_threads -lfftw3
 
+MDI_INCDIR := -I$(TINKERDIR)/mdi/build/MDI_Library
+MDI_LIBDIR := -L$(TINKERDIR)/mdi/build/MDI_Library
+MDI_LIBS := -lmdi
+MDI_MPI := OFF
+
 APBSDIR := $(TINKERDIR)/apbs
 APBS_INCDIR := -I$(APBSDIR)/include
 APBS_LIBDIR := -L$(APBSDIR)/lib
@@ -89,6 +94,18 @@ f77__ := $(shell echo $(F77) | cut -c 1-5)
 ifeq ($(f77__), ifort)
   use_ifort__ := true
   found__ := true
+endif
+f77__ := $(shell echo $(F77) | cut -c 1-3)
+ifeq ($(f77__), ftn)
+  use_gfortran__ := true
+  found__ := true
+  MDI_MPI := ON
+endif
+f77__ := $(shell echo $(F77) | cut -c 1-7)
+ifeq ($(f77__), mpifort)
+  use_gfortran__ := true
+  found__ := true
+  MDI_MPI := ON
 endif
 ifneq ($(found__), true)
 $(error Unknown fortran compiler -- $(F77); Please help with us)
@@ -316,16 +333,23 @@ def print_dependency():
 
 def target_o():
     print('%.o: $(src)/%.f')
-    print('\t$(F77) $(F77FLAGS) $(OPTFLAGS) $< -o $@')
+    print('\t$(F77) $(F77FLAGS) $(OPTFLAGS) $(MDI_INCDIR) $< -o $@')
     print('')
 
 def target_x():
     print('%.x: %.o libtinker.a')
-    print('\t$(F77) $(LINKFLAGS) -o $@ $(LIBDIR) $(FFTW_LIBDIR) $^ $(LIBS) $(FFTW_LIBS); strip $@')
+    print('\t$(F77) $(LINKFLAGS) -o $@ $(LIBDIR) $(FFTW_LIBDIR) $(MDI_LIBDIR) $^ $(LIBS) $(FFTW_LIBS) $(MDI_LIBS); strip $@')
     print('')
 
 def all_install_clean_listing():
-    print('all: $(EXEFILES)')
+    print('all:')
+    print('\t$(MAKE) mdi')
+    print('\t$(MAKE) $(EXEFILES)')
+    print('')
+
+    print('mdi:')
+    print('\tmkdir -p $(TINKERDIR)/mdi/build')
+    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dplugins=OFF -Dlibtype=STATIC -Dmpi=$(MDI_MPI); $(MAKE)')
     print('')
 
     print('install: $(RENAME)')

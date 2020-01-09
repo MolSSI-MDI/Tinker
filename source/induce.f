@@ -31,10 +31,31 @@ c
       use solpot
       use units
       use uprior
+      use efield
+      use mdiserv
       implicit none
       integer i,j,k,ii
       real*8 norm
       logical header
+
+c
+c     Allocate arrays if using mdi
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+         write (*,*)"Allocating arrrays."
+         if (.not. allocated (fielde ) ) then
+            allocate( fielde(3, npole) )
+         end if
+         if (.not. allocated( dfield_pair ) ) then
+            allocate(dfield_pair(3, npole, nprobes))
+         end if
+         dfield_pair = 0.0
+         if (.not. allocated( ufield_pair ) ) then
+            allocate(ufield_pair(3, npole, nprobes))
+         end if
+         ufield_pair = 0.0
+      endif
+
 c
 c
 c     choose the method for computation of induced dipoles
@@ -123,6 +144,7 @@ c
             end do
          end if
       end if
+
       return
       end
 c
@@ -153,6 +175,8 @@ c
       use potent
       use units
       use uprior
+      use mdiserv
+      use efield
       implicit none
       integer i,j,k,iter
       integer miniter
@@ -208,6 +232,14 @@ c
       else
          call dfield0a (field,fieldp)
       end if
+
+c -2.364E-2
+c     store electric field in permanent array
+c
+      if (use_mdi) then
+         fielde = field
+      endif
+
 c
 c     set induced dipoles to polarizability times direct field
 c
@@ -543,7 +575,14 @@ c
      &                 7x,'RMS Residual',f15.10)
          end if
 c
-c     terminate the calculation if dipoles fail to converge
+c     calculate the final electric field due to induced dipoles
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+         ufield_pair = 0.0
+         call ufield0a(field,fieldp)
+      end if
+c
+c     terminate the calculation if dipoles failed to converge
 c
          if (iter.ge.maxiter .or. eps.gt.epsold) then
             if (use_ulist) then
@@ -564,6 +603,7 @@ c
             end if
          end if
       end if
+
 c
 c     perform deallocation of some local arrays
 c
@@ -590,6 +630,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -624,7 +666,11 @@ c
       real*8, allocatable :: pscale(:)
       real*8 field(3,*)
       real*8 fieldp(3,*)
+      real*8, allocatable :: fieldt(:,:)
+      real*8, allocatable :: fieldtp(:,:)
+      real*8, allocatable :: dfieldt_pair(:,:,:)
       character*6 mode
+
 c
 c
 c     zero out the value of the field at each site
@@ -635,6 +681,7 @@ c
             fieldp(j,ii) = 0.0d0
          end do
       end do
+
 c
 c     set the switching function coefficients
 c
@@ -645,6 +692,9 @@ c     perform dynamic allocation of some local arrays
 c
       allocate (dscale(n))
       allocate (pscale(n))
+      allocate (fieldt(3,npole))
+      allocate (fieldtp(3,npole))
+      allocate (dfieldt_pair(3,npole,nprobes))
 c
 c     set array needed to scale atom and group interactions
 c
@@ -652,6 +702,34 @@ c
          dscale(i) = 1.0d0
          pscale(i) = 1.0d0
       end do
+c
+c     initialize local variables for OpenMP calculation
+c
+      do ii = 1, npole
+         do j = 1, 3
+            fieldt(j,ii) = 0.0d0
+            fieldtp(j,ii) = 0.0d0
+         end do
+      end do
+      do ii = 1, nprobes
+         do kk = 1, npole
+            do j = 1, 3
+               dfieldt_pair(j,kk,ii) = 0.0d0
+            end do
+         end do
+      end do
+c
+c     OpenMP directives for the major loop structure
+c
+!$OMP PARALLEL default(private)
+!$OMP& shared(npole,ipole,rpole,x,y,z,pcore,pval,palpha,n12,i12,
+!$OMP& n13,i13,n14,i14,n15,i15,np11,ip11,np12,ip12,np13,ip13,np14,ip14,
+!$OMP& p2scale,p3scale,p4scale,p5scale,p2iscale,p3iscale,p4iscale,
+!$OMP& p5iscale,d1scale,d2scale,d3scale,d4scale,dpequal,
+!$OMP& use_thole,use_chgpen,use_bounds,off2,field,fieldp,
+!$OMP& use_mdi, nprobes, probe_mask, dfield_pair)
+!$OMP& firstprivate(dscale,pscale) shared (fieldt,fieldtp,dfieldt_pair)
+!$OMP DO reduction(+:fieldt,fieldtp,dfieldt_pair) schedule(guided)
 c
 c     find the electrostatic field due to permanent multipoles
 c
@@ -824,7 +902,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
@@ -841,17 +919,28 @@ c
      &                        + rr5i*dir + rr7i*qir)
      &                        - rr3i*diz - 2.0d0*rr5i*qiz
                end if
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+                  if (probe_mask(ii) .gt. 0) then
+                     dfieldt_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+                     dfieldt_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
+                  end if
+               end if
 c
 c     increment the direct electrostatic field components
 c
                do j = 1, 3
-                  field(j,ii) = field(j,ii) + fid(j)*dscale(k)
-                  field(j,kk) = field(j,kk) + fkd(j)*dscale(k)
-                  fieldp(j,ii) = fieldp(j,ii) + fid(j)*pscale(k)
-                  fieldp(j,kk) = fieldp(j,kk) + fkd(j)*pscale(k)
+                  fieldt(j,ii) = fieldt(j,ii) + fid(j)*dscale(k)
+                  fieldt(j,kk) = fieldt(j,kk) + fkd(j)*dscale(k)
+                  fieldtp(j,ii) = fieldtp(j,ii) + fid(j)*pscale(k)
+                  fieldtp(j,kk) = fieldtp(j,kk) + fkd(j)*pscale(k)
                end do
             end if
          end do
+
 c
 c     reset exclusion coefficients for connected atoms
 c
@@ -899,6 +988,28 @@ c
             end do
          end if
       end do
+!$OMP END DO
+c
+c     add local to global variables for OpenMP calculation
+c
+!$OMP DO
+      do ii = 1, npole
+         do j = 1, 3
+            field(j,ii) = fieldt(j,ii)
+            fieldp(j,ii) = fieldtp(j,ii)
+         end do
+      end do
+!$OMP END DO
+!$OMP DO
+      do ii = 1, nprobes
+         do kk = 1, npole
+            do j = 1, 3
+               dfield_pair(j,kk,ii) = dfieldt_pair(j,kk,ii)
+            end do
+         end do
+      end do
+!$OMP END DO
+!$OMP END PARALLEL
 c
 c     periodic boundary for large cutoffs via replicates method
 c
@@ -1073,7 +1184,7 @@ c
                         rr7k = dmpk(7) * rr7
                         fid(1) = -xr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr + rr7k*qkr)
-     &                              - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                              - rr3k*dkx + 2.0d0*rr5k*qkx
                         fid(2) = -yr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr+rr7k*qkr)
      &                              - rr3k*dky + 2.0d0*rr5k*qky
@@ -1169,6 +1280,9 @@ c     perform deallocation of some local arrays
 c
       deallocate (dscale)
       deallocate (pscale)
+      deallocate (fieldt)
+      deallocate (fieldtp)
+      deallocate (dfieldt_pair)
       return
       end
 c
@@ -1190,6 +1304,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -1217,6 +1333,9 @@ c
       real*8, allocatable :: wscale(:)
       real*8 field(3,*)
       real*8 fieldp(3,*)
+      real*8, allocatable :: fieldt(:,:)
+      real*8, allocatable :: fieldtp(:,:)
+      real*8, allocatable :: ufieldt_pair(:,:,:)
       character*6 mode
 c
 c
@@ -1238,6 +1357,9 @@ c     perform dynamic allocation of some local arrays
 c
       allocate (uscale(n))
       allocate (wscale(n))
+      allocate (fieldt(3,npole))
+      allocate (fieldtp(3,npole))
+      allocate (ufieldt_pair(3,npole,nprobes))
 c
 c     set array needed to scale atom and group interactions
 c
@@ -1245,6 +1367,33 @@ c
          uscale(i) = 1.0d0
          wscale(i) = 1.0d0
       end do
+c
+c     initialize local variables for OpenMP calculation
+c
+      do ii = 1, npole
+         do j = 1, 3
+            fieldt(j,ii) = 0.0d0
+            fieldtp(j,ii) = 0.0d0
+         end do
+      end do
+      do ii = 1, nprobes
+         do kk = 1, npole
+            do j = 1, 3
+               ufieldt_pair(j,kk,ii) = 0.0d0
+            end do
+         end do
+      end do
+c
+c     OpenMP directives for the major loop structure
+c
+!$OMP PARALLEL default(private)
+!$OMP& shared(npole,ipole,uind,uinp,x,y,z,pcore,pval,palpha,n12,i12,
+!$OMP& n13,i13,n14,i14,n15,i15,np11,ip11,np12,ip12,np13,ip13,np14,ip14,
+!$OMP& u1scale,u2scale,u3scale,u4scale,w2scale,w3scale,w4scale,w5scale,
+!$OMP& use_thole,use_chgpen,use_bounds,off2,field,fieldp,
+!$OMP& use_mdi, nprobes, probe_mask, ufield_pair)
+!$OMP& firstprivate(uscale,wscale) shared (fieldt,fieldtp,ufieldt_pair)
+!$OMP DO reduction(+:fieldt,fieldtp,ufieldt_pair) schedule(guided)
 c
 c     find the electrostatic field due to mutual induced dipoles
 c
@@ -1349,11 +1498,24 @@ c
                fkp(2) = rr3*piy + rr5*pir*yr
                fkp(3) = rr3*piz + rr5*pir*zr
                do j = 1, 3
-                  field(j,ii) = field(j,ii) + fid(j)
-                  field(j,kk) = field(j,kk) + fkd(j)
-                  fieldp(j,ii) = fieldp(j,ii) + fip(j)
-                  fieldp(j,kk) = fieldp(j,kk) + fkp(j)
+                  fieldt(j,ii) = fieldt(j,ii) + fid(j)
+                  fieldt(j,kk) = fieldt(j,kk) + fkd(j)
+                  fieldtp(j,ii) = fieldtp(j,ii) + fip(j)
+                  fieldtp(j,kk) = fieldtp(j,kk) + fkp(j)
                end do
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+                  if (probe_mask(ii) .gt. 0) then
+c                     write(6,*)'AAA: ',fid
+                     ufieldt_pair(:, kk, probe_mask(ii)) = fid
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+c                     write(6,*)'BBB: ',fid
+                     ufieldt_pair(:, ii, probe_mask(kk)) = fkd
+                  end if
+               end if
+
             end if
          end do
 c
@@ -1384,6 +1546,28 @@ c
             wscale(i15(j,i)) = 1.0d0
          end do
       end do
+!$OMP END DO
+c
+c     add local to global variables for OpenMP calculation
+c
+!$OMP DO
+      do ii = 1, npole
+         do j = 1, 3
+            field(j,ii) = fieldt(j,ii)
+            fieldp(j,ii) = fieldtp(j,ii)
+         end do
+      end do
+!$OMP END DO
+!$OMP DO
+      do ii = 1, nprobes
+         do kk = 1, npole
+            do j = 1, 3
+               ufield_pair(j,kk,ii) = ufieldt_pair(j,kk,ii)
+            end do
+         end do
+      end do
+!$OMP END DO
+!$OMP END PARALLEL
 c
 c     periodic boundary for large cutoffs via replicates method
 c
@@ -1544,6 +1728,9 @@ c     perform deallocation of some local arrays
 c
       deallocate (uscale)
       deallocate (wscale)
+      deallocate (fieldt)
+      deallocate (fieldtp)
+      deallocate (ufieldt_pair)
       return
       end
 c
@@ -1814,7 +2001,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky

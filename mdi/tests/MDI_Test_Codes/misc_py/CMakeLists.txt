@@ -1,0 +1,21 @@
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_tmethod.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_tmethod.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_no_method.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_no_method.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_no_name.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_no_name.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_no_role.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_no_role.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_no_port_d.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_no_port_d.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_no_port_e.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_no_port_e.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_no_hostname.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_no_hostname.py COPYONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_fake_opt.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_fake_opt.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_fake_role.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_fake_role.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_fake_method.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_fake_method.py COPYONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_role.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_role.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_method.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_method.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_name.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_name.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_hostname.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_hostname.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_port.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_port.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_out.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_out.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_noarg_language.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_noarg_language.py COPYONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ut_init_double.py ${CMAKE_CURRENT_BINARY_DIR}/../../../ut_init_double.py COPYONLY)
