@@ -325,7 +325,14 @@ def target_x():
     print('')
 
 def all_install_clean_listing():
-    print('all: $(EXEFILES)')
+    print('all:')
+    print('\t$(MAKE) mdi')
+    print('\t$(MAKE) $(EXEFILES)')
+    print('')
+
+    print('mdi:')
+    print('\tmkdir mdi_build')
+    print('\tcd mdi_build; cmake ../../mdi -Dlanguage=Fortran; $(MAKE)')
     print('')
 
     print('install: $(RENAME)')
