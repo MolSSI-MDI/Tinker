@@ -3,21 +3,30 @@ cd ..
 rm -rf build
 mkdir build
 cd build
+build_dir=$(pwd)
+mkdir tinker
+cd tinker
+
+# Tinker Makefiles expect everything to be in $(HOME)/tinker
+HOME=${build_dir}
 
 # Compile the FFTW library
-build_dir=$(pwd)
-mkdir fftw
-cp -r ../fftw .
+cp -r ../../fftw .
+cp -r ../../mdi .
 cd fftw
 ls
-./configure --enable-threads --prefix=${build_dir}/fftw_install
+./configure --enable-threads --prefix=${build_dir}/tinker/fftw
 make -j 4
 make install
 cd ..
 
+# Copy the MDI library
+cp -r ../../mdi .
+
 # Compile Tinker
-cp ../make/buildmake.py .
-./buildmake.py ../source/*.f > Makefile
-sed -i '' 's/-L$(FFTWDIR)/-Lfftw_install/g' Makefile
-cp ../source/* .
+mkdir source
+cd source
+cp ../../../make/buildmake.py .
+./buildmake.py ../../../source/*.f > Makefile
+cp ../../../source/* .
 make -j 4
