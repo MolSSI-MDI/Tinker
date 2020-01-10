@@ -50,6 +50,10 @@ FFTWDIR = $(TINKERDIR)/fftw
 FFTW_LIBDIR = -L$(FFTWDIR)/lib
 FFTW_LIBS = -lfftw3_threads -lfftw3
 
+MDI_INCDIR = -I$(TINKERDIR)/mdi/build/MDI_Library
+MDI_LIBDIR = -L$(TINKERDIR)/mdi/build/MDI_Library
+MDI_LIBS = -lmdi
+
 APBSDIR = $(TINKERDIR)/apbs
 APBS_INCDIR = -I$(APBSDIR)/include
 APBS_LIBDIR = -L$(APBSDIR)/lib
@@ -786,12 +790,18 @@ EXEFILES = alchemy.x \
 	    xyzpdb.x
 
 %.o: %.f
-	${F77} ${F77FLAGS} ${OPTFLAGS} $< -o $@ 
+	${F77} ${F77FLAGS} ${OPTFLAGS} ${MDI_INCDIR} $< -o $@ 
 
 %.x: %.o libtinker.a
-	${F77} ${LINKFLAGS} -o $@ ${LIBDIR} ${FFTW_LIBDIR} $^ ${FFTW_LIBS} ${LIBS}; strip $@
+	${F77} ${LINKFLAGS} -o $@ ${LIBDIR} ${FFTW_LIBDIR} ${MDI_LIBDIR} $^ ${FFTW_LIBS} ${MDI_LIBS} ${LIBS}; strip $@
 
-all: ${EXEFILES}
+all:
+	$(MAKE) mdi
+	$(MAKE) ${EXEFILES}
+
+mdi:
+	mkdir -p $(TINKERDIR)/mdi/build
+	cd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dmpi=OFF; $(MAKE)
 
 install: ${RENAME}
 
