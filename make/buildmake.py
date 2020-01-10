@@ -55,6 +55,7 @@ endif
 FFTW_LIBDIR := -L$(FFTWDIR)/lib
 FFTW_LIBS := -lfftw3_threads -lfftw3
 
+MDI_INCDIR := -I./mdi_build/MDI_Library
 MDI_LIBDIR := -L./mdi_build/MDI_Library
 MDI_LIBS := -lmdi
 
@@ -319,12 +320,11 @@ def print_dependency():
 
 def target_o():
     print('%.o: $(src)/%.f')
-    print('\t$(F77) $(F77FLAGS) $(OPTFLAGS) $< -o $@')
+    print('\t$(F77) $(F77FLAGS) $(OPTFLAGS) $(MDI_INCDIR) $< -o $@')
     print('')
 
 def target_x():
     print('%.x: %.o libtinker.a')
-#    print('\t$(F77) $(LINKFLAGS) -o $@ $(LIBDIR) $(FFTW_LIBDIR) $^ $(LIBS) $(FFTW_LIBS); strip $@')
     print('\t$(F77) $(LINKFLAGS) -o $@ $(LIBDIR) $(FFTW_LIBDIR) $(MDI_LIBDIR) $^ $(LIBS) $(FFTW_LIBS) $(MDI_LIBS); strip $@')
     print('')
 
