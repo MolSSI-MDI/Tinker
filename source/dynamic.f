@@ -30,6 +30,7 @@ c
       use solute
       use stodyn
       use usage
+       use mdi,         only : MDI_Init
       implicit none
       integer i,istep,nstep
       integer mode,next
