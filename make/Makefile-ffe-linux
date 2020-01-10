@@ -62,6 +62,10 @@ FFTWDIR = $(BUILDDIR)/fftw
 FFTW_LIBDIR = -L$(FFTWDIR)/lib
 FFTW_LIBS = -lfftw3_threads -lfftw3
 
+MDI_INCDIR = -I$(BUILDDIR)/mdi/build/MDI_Library
+MDI_LIBDIR = -L$(BUILDDIR)/mdi/build/MDI_Library
+MDI_LIBS = -lmdi
+
 APBSDIR = $(BUILDDIR)/apbs
 APBS_INCDIR = -I$(APBSDIR)/include
 APBS_LIBDIR = -L$(APBSDIR)/lib
@@ -832,12 +836,18 @@ EXEFILES = alchemy.x \
 	${CC} ${CCFLAGS} ${JAVA_INCDIR} ${APBS_INCDIR} ${OPTFLAGS} $<
 
 %.o: %.f
-	${F77} ${F77FLAGS} ${OPTFLAGS} $< -o $@ 
+	${F77} ${F77FLAGS} ${OPTFLAGS} ${MDI_INCDIR} $< -o $@ 
 
 %.x: %.o libtinker.a
-	${F77} ${LINKFLAGS} -o $@ ${JAVA_LIBDIR} ${FFTW_LIBDIR} ${APBS_LIBDIR} ${LIBDIR} $^ ${JAVA_LIBS} ${FFTW_LIBS} ${APBS_LIBS} ${LIBS}; strip $@
+	${F77} ${LINKFLAGS} -o $@ ${LIBDIR} ${JAVA_LIBDIR} ${FFTW_LIBDIR} ${MDI_LIBDIR} ${APBS_LIBDIR} $^ ${JAVA_LIBS} ${FFTW_LIBS} ${MDI_LIBS} ${APBS_LIBS} ${LIBS}; strip $@
 
-all: ${EXEFILES}
+all:
+	$(MAKE) mdi
+	$(MAKE) ${EXEFILES}
+
+mdi:
+	mkdir -p $(BUILDDIR)/mdi/build
+	cd $(BUILDDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dmpi=OFF; $(MAKE)
 
 install: ${RENAME}
 
