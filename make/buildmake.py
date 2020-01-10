@@ -55,8 +55,8 @@ endif
 FFTW_LIBDIR := -L$(FFTWDIR)/lib
 FFTW_LIBS := -lfftw3_threads -lfftw3
 
-MDI_INCDIR := -I./mdi_build/MDI_Library
-MDI_LIBDIR := -L./mdi_build/MDI_Library
+MDI_INCDIR := -I$(TINKERDIR)/mdi/build/MDI_Library
+MDI_LIBDIR := -L$(TINKERDIR)/mdi/build/MDI_Library
 MDI_LIBS := -lmdi
 
 APBSDIR := $(TINKERDIR)/apbs
@@ -335,8 +335,8 @@ def all_install_clean_listing():
     print('')
 
     print('mdi:')
-    print('\tmkdir -p mdi_build')
-    print('\tcd mdi_build; cmake ../../mdi -Dlanguage=Fortran -Dmpi=OFF; $(MAKE)')
+    print('\tmkdir -p $(TINKERDIR)/mdi/build')
+    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dmpi=OFF; $(MAKE)')
     print('')
 
     print('install: $(RENAME)')
