@@ -10,14 +10,24 @@ mkdir fftw
 cp -r ../fftw .
 cd fftw
 ls
-./configure --enable-threads --prefix=${build_dir}/fftw_install
+./configure --enable-threads --prefix=${build_dir}/source/fftw_install
 make -j 4
 make install
 cd ..
 
+# Copy the MDI library
+cp -r ../mdi .
+
+# Is this a Mac or Linux machine?
+unameOut="$(uname -s)"
+
 # Compile Tinker
-cp ../make/buildmake.py .
-./buildmake.py ../source/*.f > Makefile
-sed -i '' 's/-L$(FFTWDIR)/-Lfftw_install/g' Makefile
-cp ../source/* .
+cd source
+cp ../../make/buildmake.py .
+./buildmake.py ../../source/*.f > Makefile
+case "${unameOut}" in
+    Darwin*)    sed -i '' 's/-L$(FFTWDIR)/-Lfftw_install/g' Makefile;;
+    *)          sed -i 's/-L$(FFTWDIR)/-Lfftw_install/g' Makefile;;
+esac
+cp ../../source/* .
 make -j 4
