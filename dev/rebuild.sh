@@ -1,5 +1,5 @@
-cd ../build
+cd ../build/source
 
 # Compile Tinker
-cp ../source/* .
+cp ../../source/* .
 make -j 4
