@@ -16,7 +16,7 @@ cp -r ../../mdi .
 cd fftw
 ls
 ./configure --enable-threads --prefix=${build_dir}/tinker/fftw
-make -j 32
+make -j 4
 make install
 cd ..
 
@@ -29,4 +29,4 @@ cd source
 cp ../../../make/buildmake.py .
 ./buildmake.py ../../../source/*.f > Makefile
 cp ../../../source/* .
-make -j 32
+make -j 4
