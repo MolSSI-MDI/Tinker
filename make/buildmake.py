@@ -336,7 +336,7 @@ def all_install_clean_listing():
 
     print('mdi:')
     print('\tmkdir -p $(TINKERDIR)/mdi/build')
-    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dmpi=OFF; $(MAKE)')
+    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dmpi=OFF -Dlibtype=STATIC; $(MAKE)')
     print('')
 
     print('install: $(RENAME)')
