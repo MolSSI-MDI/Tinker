@@ -17,9 +17,11 @@ c     option and if it is found, initializes the MDI Library
 c
 c
       module mdiserv
-      integer mdi_comm
-      logical mdi_terminate
-      logical use_mdi
+      use mdi , only : MDI_NAME_LENGTH
+      integer :: mdi_comm = 0
+      logical :: mdi_exit = .false.
+      logical :: use_mdi = .false.
+      character(len=MDI_NAME_LENGTH) :: target_node = " "
       save
       contains
 c
@@ -82,7 +84,7 @@ c
            call fatal
         end if
       end if
-      mdi_terminate = .false.
+      mdi_exit = .false.
 
       return
       end subroutine init_mdi
@@ -93,12 +95,29 @@ c     ##  subroutine mdi_listen  --  Listen for commands             ##
 c     ##                                                             ##
 c     #################################################################
 c
-      subroutine mdi_listen()
+      subroutine mdi_listen(node_name)
  1    use mdi , only : MDI_NAME_LENGTH, MDI_Recv_Command
       implicit none
+      character(len=*), intent(in) :: node_name
       integer ierr
       character(len=:), allocatable :: message
       ALLOCATE( character(MDI_NAME_LENGTH) :: message )
+c
+c     do not listen if an "EXIT" command has been received
+c
+      if ( mdi_exit ) then
+         return
+      end if
+c
+c     check if this is the target node
+c
+      if ( target_node .ne. " " ) then
+         if (target_node .eq. "@" .or. target_node .eq. node_name) then
+            target_node = " "
+         else
+            return
+         end if
+      end if
 c
 c     listen for commands from the driver
 c
@@ -114,7 +133,8 @@ c
 c
 c       check if the engine should stop listening for commands
 c
-        if ( mdi_terminate ) exit
+        if ( target_node .ne. " " ) exit
+        if ( mdi_exit ) exit
       end do response_loop
       return
       end subroutine mdi_listen
@@ -134,15 +154,22 @@ c
 
       select case( TRIM(command) )
       case( "EXIT" )
-        mdi_terminate = .true.
+        mdi_exit = .true.
       case( "<NATOMS" )
          call send_natoms(comm)
       case( "<COORDS" )
          call send_coords(comm)
       case( ">COORDS" )
          call recv_coords(comm)
+      case( "@" )
+         target_node = "@"
+      case( "@INIT_MD" )
+         target_node = "@INIT_MD"
+      case( "@FORCES" )
+         target_node = "@FORCES"
       case default
-        write(iout,*)'EXECUTE_COMMAND -- Command name not recognized'
+        write(iout,*)'EXECUTE_COMMAND -- Command name not recognized: ',
+     &                command
         call fatal
       end select
       return
