@@ -19,6 +19,7 @@ c
       module mdiserv
       integer mdi_comm
       logical mdi_terminate
+      logical use_mdi
       save
       contains
 c
@@ -46,6 +47,7 @@ c
 c
 c     check for the -mdi command line argument
 c
+      use_mdi = .false.
       found_mdi = .false.
       do i = 1, narg-1
          string = arg(i)
@@ -59,6 +61,7 @@ c
 c     initialize the MDI Library
 c
       if ( found_mdi ) then
+        use_mdi = .true.
         mpi_comm = 0
         call MDI_Init(mdi_options, mpi_comm, ierr)
         if ( ierr .ne. 0 ) then
@@ -68,7 +71,7 @@ c
 c
 c     set the execute_command callback function
 c
-      CALL MDI_Set_Execute_Command_Func(generic_command, class_obj, 
+        CALL MDI_Set_Execute_Command_Func(generic_command, class_obj, 
      &                                  ierr)
 c
 c     accept an MDI communicator

@@ -25,6 +25,7 @@ c
       use inform
       use iounit
       use keys
+      use mdiserv
       use mdstuf
       use potent
       use stodyn
@@ -222,6 +223,12 @@ c
   330          continue
             end do
          end if
+      end if
+c
+c     have MDI listen at the @GLOBAL node
+c
+      if (use_mdi) then
+         call mdi_listen()
       end if
 c
 c     perform the setup functions needed to run dynamics
