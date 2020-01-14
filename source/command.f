@@ -49,7 +49,7 @@ c
       end do
       do i = 1, narg
          letter = arg(i)(1:1)
-         if (letter .eq. '-') then
+         if (letter .eq. '-' .and. listarg(i)) then
             letter = arg(i)(2:2)
             call upcase (letter)
             if (letter.ge.'A' .and. letter.le.'Z') then

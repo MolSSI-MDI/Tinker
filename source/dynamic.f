@@ -25,11 +25,11 @@ c
       use inform
       use iounit
       use keys
+      use mdiserv
       use mdstuf
       use potent
       use stodyn
       use usage
- 1    use mdi,         only : MDI_Init
       implicit none
       integer i,next,mode
       integer istep,nstep
@@ -46,12 +46,6 @@ c
       call initial
       call getxyz
       call mechanic
-c
-c     initialize the MDI Library
-c
-      mpi_comm = 0
-      call MDI_Init("-name MM -role ENGINE -method TEST", mpi_comm, 
-     &              ierr)
 c
 c     initialize the temperature, pressure and coupling baths
 c
@@ -280,9 +274,17 @@ c
       end if
       flush (iout)
 c
+c     have MDI listen at the @DEFAULT and @INIT_MD nodes
+c
+      if (use_mdi) then
+         call mdi_listen("@DEFAULT")
+         call mdi_listen("@INIT_MD")
+      end if
+c
 c     integrate equations of motion to take a time step
 c
-      do istep = 1, nstep
+      istep = 1
+      do while ( istep .le. nstep )
          if (integrate .eq. 'VERLET') then
             call verlet (istep,dt)
          else if (integrate .eq. 'BEEMAN') then
@@ -304,6 +306,13 @@ c
          else
             call beeman (istep,dt)
          end if
+c
+c     Allow MDI to update the number of steps
+c
+         if ( use_mdi ) then
+            call mdi_set_steps(istep, nstep)
+         end if
+         istep = istep + 1
       end do
 c
 c     perform any final tasks before program exit

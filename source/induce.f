@@ -31,10 +31,31 @@ c
       use solpot
       use units
       use uprior
+      use efield
+      use mdiserv
       implicit none
       integer i,j,k,ii
       real*8 norm
       logical header
+
+c
+c     Allocate arrays if using mdi
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+c         write (iout,*)"Allocating arrrays."
+         if (.not. allocated (fielde ) ) then
+            allocate( fielde(3, npole) )
+         end if
+         if (.not. allocated( dfield_pair ) ) then
+            allocate(dfield_pair(3, npole, nprobes))
+            dfield_pair = 0.0
+         end if
+         if (.not. allocated( ufield_pair ) ) then
+            allocate(ufield_pair(3, npole, nprobes))
+            ufield_pair = 0.0
+         end if
+      endif
+
 c
 c
 c     choose the method for computation of induced dipoles
@@ -153,6 +174,8 @@ c
       use potent
       use units
       use uprior
+      use mdiserv
+      use efield
       implicit none
       integer i,j,k,iter
       integer miniter
@@ -208,6 +231,14 @@ c
       else
          call dfield0a (field,fieldp)
       end if
+
+c -2.364E-2
+c     store electric field in permanent array
+c
+      if (use_mdi) then
+         fielde = field
+      endif
+
 c
 c     set induced dipoles to polarizability times direct field
 c
@@ -564,6 +595,7 @@ c
             end if
          end if
       end if
+
 c
 c     perform deallocation of some local arrays
 c
@@ -596,6 +628,8 @@ c
       use polgrp
       use polpot
       use shunt
+      use efield
+      use mdiserv
       implicit none
       integer i,j,k,m
       integer ii,kk
@@ -625,6 +659,7 @@ c
       real*8 field(3,*)
       real*8 fieldp(3,*)
       character*6 mode
+
 c
 c
 c     zero out the value of the field at each site
@@ -824,7 +859,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
@@ -841,6 +876,18 @@ c
      &                        + rr5i*dir + rr7i*qir)
      &                        - rr3i*diz - 2.0d0*rr5i*qiz
                end if
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+
+                  if (probe_mask(ii) .gt. 0) then
+                      dfield_pair(:, probe_mask(ii), kk) = fid*dscale(k)
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+                      dfield_pair(:, probe_mask(kk), ii) = fkd*dscale(k)
+                  end if
+
+               end if
 c
 c     increment the direct electrostatic field components
 c
@@ -852,6 +899,7 @@ c
                end do
             end if
          end do
+
 c
 c     reset exclusion coefficients for connected atoms
 c
@@ -1073,7 +1121,7 @@ c
                         rr7k = dmpk(7) * rr7
                         fid(1) = -xr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr + rr7k*qkr)
-     &                              - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                              - rr3k*dkx + 2.0d0*rr5k*qkx
                         fid(2) = -yr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr+rr7k*qkr)
      &                              - rr3k*dky + 2.0d0*rr5k*qky
@@ -1814,7 +1862,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
