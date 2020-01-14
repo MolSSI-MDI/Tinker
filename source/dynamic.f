@@ -228,7 +228,7 @@ c
 c     have MDI listen at the @GLOBAL node
 c
       if (use_mdi) then
-         call mdi_listen()
+         call mdi_listen("@GLOBAL")
       end if
 c
 c     perform the setup functions needed to run dynamics
@@ -275,6 +275,12 @@ c
      &              ' Modified Beeman Algorithm')
       end if
       flush (iout)
+c
+c     have MDI listen at the @INIT_MD node
+c
+      if (use_mdi) then
+         call mdi_listen("@INIT_MD")
+      end if
 c
 c     integrate equations of motion to take a time step
 c

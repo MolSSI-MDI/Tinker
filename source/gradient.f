@@ -24,6 +24,7 @@ c
       use inter
       use iounit
       use limits
+      use mdiserv
       use potent
       use rigid
       use vdwpot
@@ -274,6 +275,12 @@ c     if (isnan(esum)) then
    10    format (/,' GRADIENT  --  Illegal Value for the Total',
      &              ' Potential Energy')
          call fatal
+      end if
+c
+c     have MDI listen at the @FORCES node
+c
+      if (use_mdi) then
+         call mdi_listen("@FORCES")
       end if
       return
       end
