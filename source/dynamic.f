@@ -30,7 +30,6 @@ c
       use solute
       use stodyn
       use usage
- 1    use mdi,         only : MDI_Init
       implicit none
       integer i,istep,nstep
       integer mode,next
@@ -47,12 +46,6 @@ c
       call initial
       call getxyz
       call mechanic
-c
-c     initialize the MDI Library
-c
-      mpi_comm = 0
-      call MDI_Init("-name MM -role ENGINE -method TEST", mpi_comm, 
-     &              ierr)
 c
 c     initialize the temperature, pressure and coupling baths
 c
