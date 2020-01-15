@@ -141,6 +141,32 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
+c     ##  subroutine mdi_set_steps  --  Set the number of steps      ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine mdi_set_steps(istep, nstep)
+      implicit none
+      integer, intent(in) :: istep
+      integer, intent(inout) :: nstep
+      if ( mdi_exit ) then
+c
+c     if the EXIT command has been received, stop iterating
+c
+         nstep = istep
+      else
+c
+c     otherwise, ensure that the md will continue iterating
+c
+         if ( nstep .le. istep ) then
+            nstep = istep + 1
+         end if
+      end if
+      return
+      end subroutine mdi_set_steps
+c
+c     #################################################################
+c     ##                                                             ##
 c     ##  subroutine execute_command  --  Generic command response   ##
 c     ##                                                             ##
 c     #################################################################
