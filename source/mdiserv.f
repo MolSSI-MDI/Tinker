@@ -183,6 +183,8 @@ c
         mdi_exit = .true.
       case( "<NATOMS" )
          call send_natoms(comm)
+      case( "<CHARGES" )
+         call send_charges(comm)
       case( "<COORDS" )
          call send_coords(comm)
       case( ">COORDS" )
@@ -227,6 +229,41 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
+c     ##  subroutine send_charges  --  Respond to "<CHARGES"         ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_charges(comm)
+      use atoms , only  : n
+      use charge , only  : nion, iion, pchg
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8                       :: charges(n)
+c
+c     construct the charges array
+c
+      do iatom=1, n
+         charges(iatom) = 0.0
+      end do
+      do iatom=1, nion
+        charges(iion(iatom)) = pchg(iatom)
+      end do
+c
+c     send the charges
+c
+      call MDI_Send(charges, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_charges
+c
+c     #################################################################
+c     ##                                                             ##
 c     ##  subroutine send_coords  --  Respond to "<COORDS"           ##
 c     ##                                                             ##
 c     #################################################################
@@ -243,7 +280,7 @@ c
 c
 c     get the conversion factor from angstrom to a.u.
 c
-      call MDI_Conversion_Factor("angstrom", "atomic_units_of_length", 
+      call MDI_Conversion_Factor("angstrom", "atomic_unit_of_length", 
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_NCOORDS -- MDI_Conversion_Factor failed'
@@ -260,7 +297,7 @@ c
 c
 c     send the coordinates
 c
-      call MDI_Send(coords, n, MDI_DOUBLE, comm, ierr)
+      call MDI_Send(coords, 3*n, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_NCOORDS -- MDI_Send failed'
          call fatal
@@ -286,7 +323,7 @@ c
 c
 c     get the conversion factor from a.u. to angstrom
 c
-      call MDI_Conversion_Factor("atomic_units_of_length", "angstrom", 
+      call MDI_Conversion_Factor("atomic_unit_of_length", "angstrom", 
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'RECV_NCOORDS -- MDI_Conversion_Factor failed'
@@ -295,7 +332,7 @@ c
 c
 c     receive the coordinates
 c
-      call MDI_Recv(coords, n, MDI_DOUBLE, comm, ierr)
+      call MDI_Recv(coords, 3*n, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'RECV_NCOORDS -- MDI_Recv failed'
          call fatal
