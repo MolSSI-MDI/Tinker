@@ -181,14 +181,18 @@ c
       select case( TRIM(command) )
       case( "EXIT" )
         mdi_exit = .true.
-      case( "<NATOMS" )
-         call send_natoms(comm)
       case( "<CHARGES" )
          call send_charges(comm)
       case( "<COORDS" )
          call send_coords(comm)
       case( ">COORDS" )
          call recv_coords(comm)
+      case( "<NATOMS" )
+         call send_natoms(comm)
+      case( "<NPOLES" )
+         call send_npoles(comm)
+      case( "<POLES" )
+         call send_poles(comm)
       case( "@" )
          target_node = "@"
       case( "@INIT_MD" )
@@ -205,30 +209,6 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
-c     ##  subroutine send_natoms  --  Respond to "<NATOMS"           ##
-c     ##                                                             ##
-c     #################################################################
-c
-      subroutine send_natoms(comm)
-      use atoms , only  : n
-      use iounit , only : iout
- 1    use mdi , only    : MDI_INT, MDI_Send
-      implicit none
-      integer, intent(in)          :: comm
-      integer                      :: ierr
-c
-c     send the number of atoms
-c
-      call MDI_Send(n, 1, MDI_INT, comm, ierr)
-      if ( ierr .ne. 0 ) then
-         write(iout,*)'SEND_NATOMS -- MDI_Send failed'
-         call fatal
-      end if
-      return
-      end subroutine send_natoms
-c
-c     #################################################################
-c     ##                                                             ##
 c     ##  subroutine send_charges  --  Respond to "<CHARGES"         ##
 c     ##                                                             ##
 c     #################################################################
@@ -238,6 +218,9 @@ c
       use charge , only  : nion, iion, pchg
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Send
+c
+c      use mpole
+c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iatom
@@ -350,3 +333,85 @@ c
 
 
       end module mdiserv
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_natoms  --  Respond to "<NATOMS"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_natoms(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+c
+c     send the number of atoms
+c
+      call MDI_Send(n, 1, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_NATOMS -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_natoms
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_npoles  --  Respond to "<NPOLES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_npoles(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Send
+      use mpole , only  : npole
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+c
+c     send the number of multipole sites
+c
+      call MDI_Send(npole, 1, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_NPOLES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_npoles
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_poles  --  Respond to "<POLES"             ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_poles(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+      use mpole , only  : maxpole, npole, pole
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, ipole, icomp
+      real*8                       :: poles_buf(13*npole)
+      real*8                       :: conv
+c
+c     prepare the poles buffer
+c
+      do ipole=1, npole
+         do icomp=1, 13
+            poles_buf(13*(ipole-1) + icomp) = pole(icomp, ipole)
+         end do
+      end do
+c
+c     send the poles
+c
+      call MDI_Send(poles_buf, 13*npole, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_POLES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_poles
