@@ -34,8 +34,8 @@ c
       subroutine init_mdi
       use argue
       use iounit
-      use iso_c_binding
- 1    use mdi , only : MDI_Init, MDI_Accept_Communicator
+ 1    use iso_c_binding
+ 2    use mdi , only : MDI_Init, MDI_Accept_Communicator
       implicit none
       logical found_mdi
       integer i
