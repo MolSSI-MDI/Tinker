@@ -17,7 +17,7 @@ c     option and if it is found, initializes the MDI Library
 c
 c
       module mdiserv
-      use mdi , only : MDI_NAME_LENGTH
+ 1    use mdi , only : MDI_NAME_LENGTH
       integer :: mdi_comm = 0
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
