@@ -225,10 +225,10 @@ c
          end if
       end if
 c
-c     have MDI listen at the @GLOBAL node
+c     have MDI listen at the @DEFAULT node
 c
       if (use_mdi) then
-         call mdi_listen("@GLOBAL")
+         call mdi_listen("@DEFAULT")
       end if
 c
 c     perform the setup functions needed to run dynamics
