@@ -290,6 +290,7 @@ OBJS =	action.o \
 	edisp1.o \
 	edisp2.o \
 	edisp3.o \
+	efield.o \
 	egauss.o \
 	egauss1.o \
 	egauss2.o \
