@@ -193,12 +193,16 @@ c
          call send_npoles(comm)
       case( "<POLES" )
          call send_poles(comm)
+      case( "<FIELD" )
+         call send_field(comm)
       case( "@" )
          target_node = "@"
       case( "@INIT_MD" )
          target_node = "@INIT_MD"
       case( "@FORCES" )
          target_node = "@FORCES"
+      case( "@INDUCE" )
+         target_node = "@INDUCE"
       case default
         write(iout,*)'EXECUTE_COMMAND -- Command name not recognized: ',
      &                command
@@ -415,3 +419,44 @@ c
       end if
       return
       end subroutine send_poles
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_field  --  Respond to "<FIELD"             ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_field(comm)
+      use atoms , only  : n
+      use charge , only  : nion, iion, pchg
+      use iounit , only : iout
+      use efield, only : fielde
+      use mpole, only : npole
+1     use mdi , only    : MDI_DOUBLE, MDI_Send
+
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, ipole, dim
+      real*8                       :: charges(n)
+      real*8                       :: field(3*npole)
+
+c
+c     construct the field array
+c
+      do ipole=1, npole
+         do dim=1, 3
+            field(3*(ipole-1) + dim) = fielde(dim, ipole)
+         end do
+      end do
+c
+c     send the field
+c
+      call MDI_Send(field, 3*npole, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_field
+

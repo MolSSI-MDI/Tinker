@@ -31,6 +31,8 @@ c
       use solute
       use units
       use uprior
+      use efield
+      use mdiserv
       implicit none
       integer i,j,k,ii
       real*8 norm
@@ -122,6 +124,14 @@ c
             end do
          end if
       end if
+
+c
+c     Add MDI listening point
+c
+      if (use_mdi) then
+         call mdi_listen("@INDUCE")
+      end if
+
       return
       end
 c
@@ -151,6 +161,8 @@ c
       use potent
       use units
       use uprior
+      use mdiserv
+      use efield
       implicit none
       integer i,j,k,iter
       integer maxiter
@@ -533,6 +545,14 @@ c
             call fatal
          end if
       end if
+
+c
+c     store electric field in permanent array
+c
+      if (use_mdi) then
+         fielde = field
+      endif
+
 c
 c     perform deallocation of some local arrays
 c
