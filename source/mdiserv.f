@@ -395,7 +395,7 @@ c
       subroutine send_poles(comm)
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, pole
+      use mpole , only  : maxpole, npole, rpole
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, icomp
@@ -406,7 +406,7 @@ c     prepare the poles buffer
 c
       do ipole=1, npole
          do icomp=1, 13
-            poles_buf(13*(ipole-1) + icomp) = pole(icomp, ipole)
+            poles_buf(13*(ipole-1) + icomp) = rpole(icomp, ipole)
          end do
       end do
 c
@@ -431,8 +431,8 @@ c
       use atoms , only  : n
       use charge , only  : nion, iion, pchg
       use iounit , only : iout
-      use efield, only : fielde
-      use mpole, only : npole
+      use efield , only : fielde
+      use mpole , only : npole
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
 
       implicit none
