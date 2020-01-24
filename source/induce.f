@@ -37,6 +37,25 @@ c
       integer i,j,k,ii
       real*8 norm
       logical header
+
+c
+c     Allocate arrays if using mdi 
+c
+      if (use_mdi) then
+         if (.not. allocated (fielde ) ) then
+            allocate( fielde(3, npole) )
+         end if
+         if (.not. allocated( dfieldx ) ) then
+            allocate(dfieldx(npole, npole))
+         end if
+         if (.not. allocated( dfieldy ) ) then
+            allocate(dfieldy(npole, npole))
+         end if
+         if (.not. allocated( dfieldz ) ) then
+            allocate(dfieldz(npole, npole))
+         end if
+      endif
+
 c
 c
 c     choose the method for computation of induced dipoles
@@ -585,6 +604,8 @@ c
       use polgrp
       use polpot
       use shunt
+      use efield
+      use mdiserv
       implicit none
       integer i,j,k,m
       integer ii,kk
@@ -617,6 +638,7 @@ c
       real*8 field(3,*)
       real*8 fieldp(3,*)
       character*6 mode
+
 c
 c
 c     zero out the value of the field at each site
@@ -863,6 +885,17 @@ c
      &                        + rr5i*dir + rr7i*qir)
      &                        - rr3i*diz - 2.0d0*rr5i*qiz
                end if
+
+               if (use_mdi) then
+c                  write(*,*) ii, kk
+                  dfieldx(kk, ii) = fid(1)
+                  dfieldx(ii, kk) = fkd(1)
+                  dfieldy(kk, ii) = fid(2)
+                  dfieldy(ii, kk) = fkd(2)
+                  dfieldz(kk, ii) = fid(3)
+                  dfieldz(ii, kk) = fkd(3)
+               end if
+
                do j = 1, 3
                   field(j,ii) = field(j,ii) + fid(j)*dscale(k)
                   field(j,kk) = field(j,kk) + fkd(j)*dscale(k)

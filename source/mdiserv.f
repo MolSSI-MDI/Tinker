@@ -34,6 +34,8 @@ c
       subroutine init_mdi
       use argue
       use iounit
+      use efield
+      use mpole
  1    use iso_c_binding
  2    use mdi , only : MDI_Init, MDI_Accept_Communicator
       implicit none
@@ -88,6 +90,26 @@ c
 
       return
       end subroutine init_mdi
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine exit_mdi  --  Exit       MDI Library            ##
+c     ##                                                             ##
+c     #################################################################
+c
+
+      subroutine exit_mdi
+      use efield
+      mdi_exit = .true.
+      if (allocated(fielde)) deallocate (fielde)
+      if (allocated(dfieldx)) deallocate (dfieldx)
+      if (allocated(dfieldy)) deallocate (dfieldy)
+      if (allocated(dfieldz)) deallocate (dfieldz)
+      return
+      end subroutine exit_mdi
+
+
 c
 c     #################################################################
 c     ##                                                             ##
@@ -180,7 +202,7 @@ c
 
       select case( TRIM(command) )
       case( "EXIT" )
-        mdi_exit = .true.
+        call exit_mdi
       case( "<CHARGES" )
          call send_charges(comm)
       case( "<COORDS" )

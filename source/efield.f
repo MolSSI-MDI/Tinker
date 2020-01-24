@@ -12,19 +12,15 @@ c     ##                                                                    ##
 c     ########################################################################
 c
 c
-c     atomclass1       atom numbers of residues in class1 (E.g active site residues)
-c     atomclass2       atom numbers of residues in class2 (Eg. scaffold)
-c     class1count      Number of atoms in class1
-c     class2count      Number of atoms in class2
-c     ecprobe          atom numbers that define probes
-c     numprobes        Number of atoms in ecprobe
-c     ecmpole          Multipoles of each residue
-c     ecfieldx         Direct Electric field at probe due to each residue postion(x-dir)
-c     ecfieldy         Direct Electric field at probe due to each residue postion(y-dir)
+c     
 
 
       module efield
+      use mpole
       implicit none
       real*8, allocatable :: fielde(:,:)
+      real*8, allocatable :: dfieldx(:,:)
+      real*8, allocatable :: dfieldy(:,:)
+      real*8, allocatable :: dfieldz(:,:)
       save
       end
