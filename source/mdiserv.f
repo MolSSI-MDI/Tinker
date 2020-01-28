@@ -532,7 +532,7 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, jpole, dim
-      real*8                       :: dfield(3*npole*npole)
+      real*8, allocatable          :: dfield(:)
 c
 c     ensure that dfield_pair has been allocated
 c
@@ -543,6 +543,7 @@ c
 c
 c     construct the field array
 c
+      allocate( dfield(3*npole*npole) )
       do ipole=1, npole
          do jpole=1, npole
             do dim=1, 3
@@ -577,7 +578,7 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, jpole, dim
-      real*8                       :: ufield(3*npole*npole)
+      real*8, allocatable          :: ufield(:)
 c
 c     ensure that ufield_pair has been allocated
 c
@@ -588,6 +589,7 @@ c
 c
 c     construct the field array
 c
+      allocate( ufield(3*npole*npole) )
       do ipole=1, npole
          do jpole=1, npole
             do dim=1, 3
