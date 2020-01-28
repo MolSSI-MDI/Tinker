@@ -75,7 +75,7 @@ c
 c
 c     set the execute_command callback function
 c
-        CALL MDI_Set_Execute_Command_Func(generic_command, class_obj, 
+        CALL MDI_Set_Execute_Command_Func(generic_command, class_obj,
      &                                  ierr)
 c
 c     accept an MDI communicator
@@ -291,7 +291,7 @@ c
 c
 c     get the conversion factor from angstrom to a.u.
 c
-      call MDI_Conversion_Factor("angstrom", "atomic_unit_of_length", 
+      call MDI_Conversion_Factor("angstrom", "atomic_unit_of_length",
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_NCOORDS -- MDI_Conversion_Factor failed'
@@ -334,7 +334,7 @@ c
 c
 c     get the conversion factor from a.u. to angstrom
 c
-      call MDI_Conversion_Factor("atomic_unit_of_length", "angstrom", 
+      call MDI_Conversion_Factor("atomic_unit_of_length", "angstrom",
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'RECV_NCOORDS -- MDI_Conversion_Factor failed'
@@ -412,7 +412,7 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
-c     ##  subroutine send_npoles  --  Respond to "<NPOLES"           ##
+c     ##  subroutine recv_nprobes --  Respond to ">NPROBES"          ##
 c     ##                                                             ##
 c     #################################################################
 c
@@ -427,18 +427,14 @@ c
 c
 c     receive the number of probes
 c
-         call MDI_Recv(iprobe, 1, MDI_INT, comm, ierr)
+         call MDI_Recv(nprobes, 1, MDI_INT, comm, ierr)
          if ( ierr .ne. 0 ) then
             write(iout,*)'RECV_ -- MDI_Recv failed'
             call fatal
          end if
-c
-c     replace the system nprobes with the received number.
-c
-      nprobes = iprobe
       return
       end subroutine recv_nprobes
-      
+
 c
 c     #################################################################
 c     ##                                                             ##
@@ -513,4 +509,3 @@ c
       end if
       return
       end subroutine send_field
-
