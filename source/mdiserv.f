@@ -103,7 +103,8 @@ c
       use efield
       mdi_exit = .true.
       if (allocated(fielde)) deallocate (fielde)
-      if (allocated(dfield)) deallocate (dfield)
+      if (allocated(dfield_pair)) deallocate (dfield_pair)
+      if (allocated(ufield_pair)) deallocate (ufield_pair)
       return
       end subroutine exit_mdi
 
@@ -217,6 +218,10 @@ c
          call send_field(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
+      case( "<DFIELD" )
+         call send_dfield(comm)
+      case( "<UFIELD" )
+         call send_ufield(comm)
       case( "@" )
          target_node = "@"
       case( "@INIT_MD" )
@@ -427,7 +432,7 @@ c     receive the number of probes
 c
          call MDI_Recv(iprobe, 1, MDI_INT, comm, ierr)
          if ( ierr .ne. 0 ) then
-            write(iout,*)'RECV_ -- MDI_Recv failed'
+            write(iout,*)'RECV_NPROBES -- MDI_Recv failed'
             call fatal
          end if
 c
@@ -506,9 +511,86 @@ c     send the field
 c
       call MDI_Send(field, 3*npole, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         write(iout,*)'SEND_FIELD -- MDI_Send failed'
          call fatal
       end if
       return
       end subroutine send_field
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_dfield  --  Respond to "<DFIELD"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_dfield(comm)
+      use iounit , only : iout
+      use efield , only : dfield_pair
+      use mpole , only : npole
+1     use mdi , only    : MDI_DOUBLE, MDI_Send
 
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, ipole, jpole, dim
+      real*8                       :: dfield(3*npole*npole)
+
+c
+c     construct the field array
+c
+      do ipole=1, npole
+         do jpole=1, npole
+            do dim=1, 3
+               dfield(3*npole*(ipole-1) + 3*(jpole-1) + dim)
+     &              = dfield_pair(dim, jpole, ipole)
+            end do
+         end do
+      end do
+c
+c     send the field
+c
+      call MDI_Send(dfield, 3*npole*npole, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_DFIELD -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_dfield
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_ufield  --  Respond to "<UFIELD"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_ufield(comm)
+      use iounit , only : iout
+      use efield , only : ufield_pair
+      use mpole , only : npole
+1     use mdi , only    : MDI_DOUBLE, MDI_Send
+
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, ipole, jpole, dim
+      real*8                       :: ufield(3*npole*npole)
+
+c
+c     construct the field array
+c
+      do ipole=1, npole
+         do jpole=1, npole
+            do dim=1, 3
+               ufield(3*npole*(ipole-1) + 3*(jpole-1) + dim)
+     &              = ufield_pair(dim, jpole, ipole)
+            end do
+         end do
+      end do
+c
+c     send the field
+c
+      call MDI_Send(ufield, 3*npole*npole, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_UFIELD -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_ufield

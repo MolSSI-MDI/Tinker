@@ -46,9 +46,13 @@ c
             allocate( fielde(3, npole) )
             fielde = 0.0
          end if
-         if (.not. allocated( dfield ) ) then
-            allocate(dfield(3, npole, npole))
-            dfield = 0.0
+         if (.not. allocated( dfield_pair ) ) then
+            allocate(dfield_pair(3, npole, npole))
+            dfield_pair = 0.0
+         end if
+         if (.not. allocated( ufield_pair ) ) then
+            allocate(ufield_pair(3, npole, npole))
+            ufield_pair = 0.0
          end if
       endif
 
@@ -666,7 +670,7 @@ c
 c     zero the pair-wise field
 c
       if (use_mdi) then
-         dfield = 0.0
+         dfield_pair = 0.0
       end if
 c     
 c     find the electrostatic field due to permanent multipoles
@@ -889,8 +893,8 @@ c
                end if
 
                if (use_mdi) then
-                  dfield(:, kk, ii) = fid * dscale(k)
-                  dfield(:, ii, kk) = fkd * dscale(k)
+                  dfield_pair(:, kk, ii) = fid * dscale(k)
+                  dfield_pair(:, ii, kk) = fkd * dscale(k)
                end if
 
                do j = 1, 3
@@ -1268,6 +1272,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -1326,6 +1332,12 @@ c
          uscale(i) = 1.0d0
          wscale(i) = 1.0d0
       end do
+c
+c     zero the pair-wise field
+c
+      if (use_mdi) then
+         ufield_pair = 0.0
+      end if
 c
 c     find the electrostatic field due to mutual induced dipoles
 c
@@ -1444,6 +1456,13 @@ c
                   fieldp(j,ii) = fieldp(j,ii) + fip(j)
                   fieldp(j,kk) = fieldp(j,kk) + fkp(j)
                end do
+c
+c     store the pair-wise components of the electric field
+c
+               if (use_mdi) then
+                  ufield_pair(:, kk, ii) = fid
+                  ufield_pair(:, ii, kk) = fkd
+               end if
             end if
          end do
 c
