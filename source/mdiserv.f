@@ -217,6 +217,8 @@ c
          call send_poles(comm)
       case( "<FIELD" )
          call send_field(comm)
+      case( "<DFIELDC" )
+            call send_dfield_components(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -474,9 +476,11 @@ c
 
       count = 1
       do i=1, nprobes
-        probe_mask(i) = count
+        probe_mask(probes(i)) = count
         count = count + 1
       end do
+
+c      write (*,*) probe_mask
 
       return
       end subroutine recv_probes
@@ -556,3 +560,42 @@ c
       end if
       return
       end subroutine send_field
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_dfield_components  --  Respond to "<DFIELDC"##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_dfield_components(comm)
+      use iounit , only : iout
+      use efield , only : dfieldx, dfieldy, dfieldz, nprobes, fielde
+      use mpole , only : npole
+1     use mdi , only    : MDI_DOUBLE, MDI_Send
+
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, i, j
+      real*8                       :: field(3*nprobes*npole)
+
+c
+c     construct the field array
+c
+      do i=1, nprobes
+         do j=1, npole
+            field(npole*(i-1) + j) = dfieldx(j,i)
+            field(npole*(i-1) + j + npole*nprobes) = dfieldy(j,i)
+            field(npole*(i-1) + j + 2*npole*nprobes) = dfieldz(j,i)
+         end do
+      end do
+c
+c     send the field
+c
+      call MDI_Send(field, 3*npole*nprobes, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_dfield_components
