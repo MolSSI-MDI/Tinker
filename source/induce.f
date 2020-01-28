@@ -44,15 +44,11 @@ c
       if (use_mdi) then
          if (.not. allocated (fielde ) ) then
             allocate( fielde(3, npole) )
+            fielde = 0.0
          end if
-         if (.not. allocated( dfieldx ) ) then
-            allocate(dfieldx(npole, npole))
-         end if
-         if (.not. allocated( dfieldy ) ) then
-            allocate(dfieldy(npole, npole))
-         end if
-         if (.not. allocated( dfieldz ) ) then
-            allocate(dfieldz(npole, npole))
+         if (.not. allocated( dfield ) ) then
+            allocate(dfield(3, npole, npole))
+            dfield = 0.0
          end if
       endif
 
@@ -667,6 +663,12 @@ c
          pscale(i) = 1.0d0
       end do
 c
+c     zero the pair-wise field
+c
+      if (use_mdi) then
+         dfield = 0.0
+      end if
+c     
 c     find the electrostatic field due to permanent multipoles
 c
       do ii = 1, npole-1
@@ -887,13 +889,8 @@ c
                end if
 
                if (use_mdi) then
-c                  write(*,*) ii, kk
-                  dfieldx(kk, ii) = fid(1)
-                  dfieldx(ii, kk) = fkd(1)
-                  dfieldy(kk, ii) = fid(2)
-                  dfieldy(ii, kk) = fkd(2)
-                  dfieldz(kk, ii) = fid(3)
-                  dfieldz(ii, kk) = fkd(3)
+                  dfield(:, kk, ii) = fid * dscale(k)
+                  dfield(:, ii, kk) = fkd * dscale(k)
                end if
 
                do j = 1, 3

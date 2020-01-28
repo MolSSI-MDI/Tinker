@@ -103,9 +103,7 @@ c
       use efield
       mdi_exit = .true.
       if (allocated(fielde)) deallocate (fielde)
-      if (allocated(dfieldx)) deallocate (dfieldx)
-      if (allocated(dfieldy)) deallocate (dfieldy)
-      if (allocated(dfieldz)) deallocate (dfieldz)
+      if (allocated(dfield)) deallocate (dfield)
       return
       end subroutine exit_mdi
 
