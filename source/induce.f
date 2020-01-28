@@ -39,20 +39,21 @@ c
       logical header
 
 c
-c     Allocate arrays if using mdi 
+c     Allocate arrays if using mdi
 c
-      if (use_mdi) then
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+c         write (*,*), "Allocating arrrays."
          if (.not. allocated (fielde ) ) then
             allocate( fielde(3, npole) )
          end if
          if (.not. allocated( dfieldx ) ) then
-            allocate(dfieldx(npole, npole))
+            allocate(dfieldx(nprobes, npole))
          end if
          if (.not. allocated( dfieldy ) ) then
-            allocate(dfieldy(npole, npole))
+            allocate(dfieldy(nprobes, npole))
          end if
          if (.not. allocated( dfieldz ) ) then
-            allocate(dfieldz(npole, npole))
+            allocate(dfieldz(nprobes, npole))
          end if
       endif
 
@@ -232,6 +233,14 @@ c
       else
          call dfield0a (field,fieldp)
       end if
+
+c
+c     store electric field in permanent array
+c
+      if (use_mdi) then
+         fielde = field
+      endif
+
 c
 c     set induced dipoles to polarizability times direct field
 c
@@ -566,13 +575,6 @@ c
       end if
 
 c
-c     store electric field in permanent array
-c
-      if (use_mdi) then
-         fielde = field
-      endif
-
-c
 c     perform deallocation of some local arrays
 c
       deallocate (field)
@@ -816,8 +818,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -868,7 +870,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
@@ -886,14 +888,19 @@ c
      &                        - rr3i*diz - 2.0d0*rr5i*qiz
                end if
 
-               if (use_mdi) then
-c                  write(*,*) ii, kk
-                  dfieldx(kk, ii) = fid(1)
-                  dfieldx(ii, kk) = fkd(1)
-                  dfieldy(kk, ii) = fid(2)
-                  dfieldy(ii, kk) = fkd(2)
-                  dfieldz(kk, ii) = fid(3)
-                  dfieldz(ii, kk) = fkd(3)
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+c
+                  if (probe_mask(ii) .gt. 0) then
+                      dfieldx(kk, probe_mask(ii)) = fid(1)*dscale(k)
+                      dfieldy(kk, probe_mask(ii)) = fid(2)*dscale(k)
+                      dfieldz(kk, probe_mask(ii)) = fid(3)*dscale(k)
+                 end if
+
+                 if (probe_mask(kk) .gt. 0) then
+                      dfieldx(ii, probe_mask(kk)) = fkd(1)*dscale(k)
+                      dfieldy(ii, probe_mask(kk)) = fkd(2)*dscale(k)
+                      dfieldz(ii, probe_mask(kk)) = fkd(3)*dscale(k)
+                end if
                end if
 
                do j = 1, 3
@@ -1103,8 +1110,8 @@ c
                            if (pgamma .ne. 0.0d0) then
                               damp = pgamma * (r/damp)**(1.5d0)
                               if (damp .lt. 50.0d0) then
-                                 expdamp = exp(-damp) 
-                                 scale3 = 1.0d0 - expdamp 
+                                 expdamp = exp(-damp)
+                                 scale3 = 1.0d0 - expdamp
                                  scale5 = 1.0d0 - expdamp
      &                                               *(1.0d0+0.5d0*damp)
                                  scale7 = 1.0d0 - expdamp
@@ -1157,7 +1164,7 @@ c
                         rr7k = dmpk(7) * rr7
                         fid(1) = -xr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr + rr7k*qkr)
-     &                              - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                              - rr3k*dkx + 2.0d0*rr5k*qkx
                         fid(2) = -yr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr+rr7k*qkr)
      &                              - rr3k*dky + 2.0d0*rr5k*qky
@@ -1898,8 +1905,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -1950,7 +1957,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
@@ -2843,8 +2850,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -3185,8 +3192,8 @@ c
                            if (pgamma .ne. 0.0d0) then
                               damp = pgamma * (r/damp)**(1.5d0)
                               if (damp .lt. 50.0d0) then
-                                 expdamp = exp(-damp) 
-                                 scale3 = 1.0d0 - expdamp 
+                                 expdamp = exp(-damp)
+                                 scale3 = 1.0d0 - expdamp
                                  scale5 = 1.0d0 - expdamp
      &                                               *(1.0d0+0.5d0*damp)
                                  scale7 = 1.0d0 - expdamp
@@ -3727,8 +3734,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -5517,8 +5524,8 @@ c
                         if (pgamma .ne. 0.0d0) then
                            damp = pgamma * (r/damp)**(1.5d0)
                            if (damp .lt. 50.0d0) then
-                              expdamp = exp(-damp) 
-                              scale3 = 1.0d0 - expdamp 
+                              expdamp = exp(-damp)
+                              scale3 = 1.0d0 - expdamp
                               scale5 = 1.0d0 - expdamp
      &                                            *(1.0d0+0.5d0*damp)
                               scale7 = 1.0d0 - expdamp
@@ -6828,8 +6835,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
