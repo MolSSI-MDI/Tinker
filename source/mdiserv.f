@@ -217,6 +217,8 @@ c
          call send_poles(comm)
       case( "<FIELD" )
          call send_field(comm)
+      case( ">NPROBES" )
+         call recv_nprobes(comm)
       case( "@" )
          target_node = "@"
       case( "@INIT_MD" )
@@ -357,7 +359,6 @@ c
       return
       end subroutine recv_coords
 
-
       end module mdiserv
 c
 c     #################################################################
@@ -407,6 +408,37 @@ c
       end if
       return
       end subroutine send_npoles
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_npoles  --  Respond to "<NPOLES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_nprobes(comm)
+         use iounit , only : iout
+1        use mdi , only    : MDI_DOUBLE, MDI_INT, MDI_Recv
+         use efield , only : nprobes
+         implicit none
+         integer, intent(in)          :: comm
+         integer                      :: ierr, iprobe
+
+c
+c     receive the number of probes
+c
+         call MDI_Recv(iprobe, 1, MDI_INT, comm, ierr)
+         if ( ierr .ne. 0 ) then
+            write(iout,*)'RECV_ -- MDI_Recv failed'
+            call fatal
+         end if
+c
+c     replace the system nprobes with the received number.
+c
+      nprobes = iprobe
+      return
+      end subroutine recv_nprobes
+      
 c
 c     #################################################################
 c     ##                                                             ##
