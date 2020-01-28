@@ -219,6 +219,8 @@ c
          call send_field(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
+      case( ">PROBES" )
+            call recv_probes(comm)
       case( "@" )
          target_node = "@"
       case( "@INIT_MD" )
@@ -434,6 +436,51 @@ c
          end if
       return
       end subroutine recv_nprobes
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_probes --  Respond to ">PROBES"            ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_probes(comm)
+        use iounit , only : iout
+1       use mdi , only    : MDI_DOUBLE, MDI_INT, MDI_Recv
+        use efield , only : nprobes, probes, probe_mask
+        use mpole , only : npole
+        implicit none
+        integer, intent(in)          :: comm
+        integer                      :: ierr, iprobe, i, count
+
+        allocate (probes(nprobes))
+        allocate (probe_mask(npole))
+
+c
+c     receive the probes
+c
+       call MDI_Recv(probes, nprobes, MDI_DOUBLE, comm, ierr)
+       if ( ierr .ne. 0 ) then
+          write(iout,*)'RECV_ -- MDI_Recv failed'
+          call fatal
+       end if
+
+c
+c     Make probe mask
+c
+      do i=1, npole
+        probe_mask(i) = 0
+      end do
+
+      count = 1
+      do i=1, nprobes
+        probe_mask(i) = count
+        count = count + 1
+      end do
+
+      return
+      end subroutine recv_probes
+
 
 c
 c     #################################################################
