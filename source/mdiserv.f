@@ -533,7 +533,13 @@ c
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, jpole, dim
       real*8                       :: dfield(3*npole*npole)
-
+c
+c     ensure that dfield_pair has been allocated
+c
+      if ( .not. allocated(dfield_pair) ) then
+         write(iout,*)'SEND_DFIELD -- DFIELD_PAIR not allocated'
+         call fatal
+      end if
 c
 c     construct the field array
 c
@@ -572,7 +578,13 @@ c
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, jpole, dim
       real*8                       :: ufield(3*npole*npole)
-
+c
+c     ensure that ufield_pair has been allocated
+c
+      if ( .not. allocated(ufield_pair) ) then
+         write(iout,*)'SEND_UFIELD -- UFIELD_PAIR not allocated'
+         call fatal
+      end if
 c
 c     construct the field array
 c
