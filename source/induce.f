@@ -42,7 +42,7 @@ c
 c     Allocate arrays if using mdi
 c
       if ((use_mdi) .and. (nprobes .gt. 0)) then
-c         write (*,*), "Allocating arrrays."
+c         write (iout,*)"Allocating arrrays."
          if (.not. allocated (fielde ) ) then
             allocate( fielde(3, npole) )
          end if
@@ -144,14 +144,6 @@ c
             end do
          end if
       end if
-
-c
-c     Add MDI listening point
-c
-      if (use_mdi) then
-         call mdi_listen("@INDUCE")
-      end if
-
       return
       end
 c
