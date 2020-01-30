@@ -22,6 +22,7 @@ c
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
       character(len=MDI_NAME_LENGTH) :: target_node = " "
+      character(len=MDI_NAME_LENGTH) :: current_node = " "
       save
       contains
 c
@@ -124,6 +125,10 @@ c
       integer ierr
       character(len=:), allocatable :: message
       ALLOCATE( character(MDI_NAME_LENGTH) :: message )
+c
+c     set the current node
+c
+      current_node = node_name
 c
 c     do not listen if an "EXIT" command has been received
 c
@@ -363,7 +368,6 @@ c
       return
       end subroutine recv_coords
 
-      end module mdiserv
 c
 c     #################################################################
 c     ##                                                             ##
@@ -461,7 +465,7 @@ c
 c
 c     receive the probes
 c
-       call MDI_Recv(probes, nprobes, MDI_DOUBLE, comm, ierr)
+       call MDI_Recv(probes, nprobes, MDI_INT, comm, ierr)
        if ( ierr .ne. 0 ) then
           write(iout,*)'RECV_ -- MDI_Recv failed'
           call fatal
@@ -541,7 +545,12 @@ c
       integer                      :: ierr, ipole, dim
       real*8                       :: charges(n)
       real*8                       :: field(3*npole)
-
+c
+c     if this is the @DEFAULT node, calculate the field
+c
+      if ( current_node .eq. "@DEFAULT" ) then
+         call induce()
+      end if
 c
 c     construct the field array
 c
@@ -599,3 +608,5 @@ c
       end if
       return
       end subroutine send_dfield_components
+
+      end module mdiserv
