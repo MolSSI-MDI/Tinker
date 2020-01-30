@@ -104,9 +104,8 @@ c
       use efield
       mdi_exit = .true.
       if (allocated(fielde)) deallocate (fielde)
-      if (allocated(dfieldx)) deallocate (dfieldx)
-      if (allocated(dfieldy)) deallocate (dfieldy)
-      if (allocated(dfieldz)) deallocate (dfieldz)
+      if (allocated(dfield_pair)) deallocate (dfield_pair)
+      if (allocated(ufield_pair)) deallocate (ufield_pair)
       return
       end subroutine exit_mdi
 
@@ -573,7 +572,7 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
-c     ##  subroutine send_dfield_components  --  Respond to "<DFIELDC"##
+c     ##  subroutine send_dfield_components  --  Respond to "<DFIELD"##
 c     ##                                                             ##
 c     #################################################################
 c
