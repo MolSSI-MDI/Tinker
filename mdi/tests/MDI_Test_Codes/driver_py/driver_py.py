@@ -46,12 +46,12 @@ name = mdi.MDI_Recv(mdi.MDI_NAME_LENGTH, mdi.MDI_CHAR, comm)
 
 print(" Engine name: " + str(name))
 
-# Check if the engine has the @GLOBAL node
-if ( not mdi.MDI_Check_Node_Exists("@GLOBAL",comm) ):
-    raise Exception("Engine does not have the @GLOBAL node")
+# Check if the engine has the @DEFAULT node
+if ( not mdi.MDI_Check_Node_Exists("@DEFAULT",comm) ):
+    raise Exception("Engine does not have the @DEFAULT node")
 
 # Check if the engine supports the EXIT command
-if ( not mdi.MDI_Check_Command_Exists("@GLOBAL","EXIT",comm) ):
+if ( not mdi.MDI_Check_Command_Exists("@DEFAULT","EXIT",comm) ):
     raise Exception("Engine does not support the EXIT command")
 
 # Test the node, command, and callback inquiry functions
@@ -82,15 +82,15 @@ if use_numpy:
     coords_temp = mdi.MDI_Recv(3 * natoms, mdi.MDI_DOUBLE_NUMPY, comm)
 else:
     coords_temp = mdi.MDI_Recv(3 * natoms, mdi.MDI_DOUBLE, comm)
-coords = [ round(coords_temp[icoord], 10) for icoord in range( 3 * natoms ) ]
-print("COORDS: " + str(coords))
+coords = [ str( round(coords_temp[icoord], 10) ) for icoord in range( 3 * natoms ) ]
+print("COORDS: " + '[%s]' % ', '.join(map(str, coords)) )
 
 # Send the "<FORCES" command to the engine
 mdi.MDI_Send_Command("<FORCES", comm)
 forces = mdi.MDI_Recv(3 * natoms, mdi.MDI_DOUBLE, comm)
 for iforce in range( 3 * natoms ):
-    forces[iforce] = round(forces[iforce], 10)
-print("FORCES: " + str(forces))
+    forces[iforce] = str( round(forces[iforce], 10) )
+print("FORCES: " + '[%s]' % ', '.join(map(str, forces)) )
 
 # Send the "EXIT" command to the engine
 mdi.MDI_Send_Command("EXIT", comm)
