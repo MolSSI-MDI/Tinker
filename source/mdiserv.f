@@ -578,25 +578,27 @@ c     #################################################################
 c
       subroutine send_dfield_components(comm)
       use iounit , only : iout
-      use efield , only : dfieldx, dfieldy, dfieldz, nprobes, fielde
+      use efield , only : nprobes, fielde, dfield_pair
       use mpole , only : npole
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
 
       implicit none
       integer, intent(in)          :: comm
-      integer                      :: ierr, i, j
+      integer                      :: ierr, i, j, dim
       real*8                       :: field(3*nprobes*npole)
 
 c
 c     construct the field array
 c
+
       do i=1, nprobes
-         do j=1, npole
-            field(npole*(i-1) + j) = dfieldx(j,i)
-            field(npole*(i-1) + j + npole*nprobes) = dfieldy(j,i)
-            field(npole*(i-1) + j + 2*npole*nprobes) = dfieldz(j,i)
-         end do
+        do j=1, npole
+          do dim=1, 3
+              field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
+          end do
+        end do
       end do
+
 c
 c     send the field
 c
