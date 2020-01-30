@@ -226,12 +226,6 @@ c
          end if
       end if
 c
-c     have MDI listen at the @DEFAULT node
-c
-      if (use_mdi) then
-         call mdi_listen("@DEFAULT")
-      end if
-c
 c     perform the setup functions needed to run dynamics
 c
       call mdinit
@@ -277,9 +271,10 @@ c
       end if
       flush (iout)
 c
-c     have MDI listen at the @INIT_MD node
+c     have MDI listen at the @DEFAULT and @INIT_MD nodes
 c
       if (use_mdi) then
+         call mdi_listen("@DEFAULT")
          call mdi_listen("@INIT_MD")
       end if
 c

@@ -18,9 +18,11 @@ c
       module efield
       implicit none
       integer nprobes;
-      real*8, allocatable :: probes(:)
-      integer*8, allocatable :: probe_mask(:)
+      integer, allocatable :: probes(:)
+      integer, allocatable :: probe_mask(:)
       real*8, allocatable :: fielde(:,:)
+      real*8, allocatable :: dfield_pair(:,:,:)
+      real*8, allocatable :: ufield_pair(:,:,:)
       real*8, allocatable :: dfieldx(:,:)
       real*8, allocatable :: dfieldy(:,:)
       real*8, allocatable :: dfieldz(:,:)
