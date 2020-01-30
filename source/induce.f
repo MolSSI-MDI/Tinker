@@ -55,6 +55,14 @@ c         write (*,*), "Allocating arrrays."
          if (.not. allocated( dfieldz ) ) then
             allocate(dfieldz(nprobes, npole))
          end if
+
+         do i=1, npole
+           do j=1, nprobes
+            dfieldx(j,i) = 0.0d0
+            dfieldy(j,i) = 0.0d0
+            dfieldz(j,i) = 0.0d0
+         end do
+       end do
       endif
 
 c
@@ -234,7 +242,7 @@ c
          call dfield0a (field,fieldp)
       end if
 
-c
+c -2.364E-2
 c     store electric field in permanent array
 c
       if (use_mdi) then
@@ -889,7 +897,7 @@ c
                end if
 
                if ((use_mdi) .and. (nprobes .gt. 0)) then
-c
+
                   if (probe_mask(ii) .gt. 0) then
                       dfieldx(kk, probe_mask(ii)) = fid(1)*dscale(k)
                       dfieldy(kk, probe_mask(ii)) = fid(2)*dscale(k)
@@ -901,6 +909,22 @@ c
                       dfieldy(ii, probe_mask(kk)) = fkd(2)*dscale(k)
                       dfieldz(ii, probe_mask(kk)) = fkd(3)*dscale(k)
                 end if
+
+c          if ((probe_mask(ii)) .eq. 1) then
+c              write (*,*) kk, fid(1)*dscale(k)
+c          end if
+
+
+c          if ((probe_mask(ii) .eq. 1) .and. (kk .eq. 5)) then
+c
+c            write (*,*) "On 1 from 5 - x", fid(1)*dscale(k)
+c            write (*,*) "On 5 from 1 - x", fkd(1)*dscale(k)
+c            m = probe_mask(ii)
+c            write (*,*) "Stored 1 from 5 - x", dfieldx(kk, m)
+c            m = probe_mask(kk)
+c            write (*,*) "Stored 5 from 1- x", dfieldx(ii, m)
+c          end if
+
                end if
 
                do j = 1, 3
@@ -911,6 +935,7 @@ c
                end do
             end if
          end do
+
 c
 c     reset exclusion coefficients for connected atoms
 c
