@@ -12,14 +12,14 @@ c     ##                                                                    ##
 c     ########################################################################
 c
 c
-c     
+c
 
 
       module efield
       implicit none
       integer nprobes;
       real*8, allocatable :: probes(:)
-      real*8, allocatable :: probe_mask(:)
+      integer*8, allocatable :: probe_mask(:)
       real*8, allocatable :: fielde(:,:)
       real*8, allocatable :: dfieldx(:,:)
       real*8, allocatable :: dfieldy(:,:)
