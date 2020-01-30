@@ -46,23 +46,14 @@ c         write (iout,*)"Allocating arrrays."
          if (.not. allocated (fielde ) ) then
             allocate( fielde(3, npole) )
          end if
-         if (.not. allocated( dfieldx ) ) then
-            allocate(dfieldx(nprobes, npole))
+         if (.not. allocated( dfield_pair ) ) then
+            allocate(dfield_pair(3, npole, nprobes))
+            dfield_pair = 0.0
          end if
-         if (.not. allocated( dfieldy ) ) then
-            allocate(dfieldy(nprobes, npole))
+         if (.not. allocated( ufield_pair ) ) then
+            allocate(ufield_pair(3, npole, nprobes))
+            ufield_pair = 0.0
          end if
-         if (.not. allocated( dfieldz ) ) then
-            allocate(dfieldz(nprobes, npole))
-         end if
-
-         do i=1, npole
-           do j=1, nprobes
-            dfieldx(j,i) = 0.0d0
-            dfieldy(j,i) = 0.0d0
-            dfieldz(j,i) = 0.0d0
-         end do
-       end do
       endif
 
 c
@@ -891,15 +882,11 @@ c
                if ((use_mdi) .and. (nprobes .gt. 0)) then
 
                   if (probe_mask(ii) .gt. 0) then
-                      dfieldx(kk, probe_mask(ii)) = fid(1)*dscale(k)
-                      dfieldy(kk, probe_mask(ii)) = fid(2)*dscale(k)
-                      dfieldz(kk, probe_mask(ii)) = fid(3)*dscale(k)
+                      dfield_pair(:, probe_mask(ii), kk) = fid*dscale(k)
                  end if
 
                  if (probe_mask(kk) .gt. 0) then
-                      dfieldx(ii, probe_mask(kk)) = fkd(1)*dscale(k)
-                      dfieldy(ii, probe_mask(kk)) = fkd(2)*dscale(k)
-                      dfieldz(ii, probe_mask(kk)) = fkd(3)*dscale(k)
+                      dfield_pair(:, probe_mask(kk), ii) = fkd*dscale(k)
                 end if
 
 c          if ((probe_mask(ii)) .eq. 1) then
