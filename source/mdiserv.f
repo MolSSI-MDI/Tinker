@@ -21,7 +21,7 @@ c
       integer :: mdi_comm = 0
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
-      character(len=MDI_NAME_LENGTH) :: target_node = " "
+      character(len=MDI_NAME_LENGTH) :: target_node = "@DEFAULT"
       character(len=MDI_NAME_LENGTH) :: current_node = " "
       save
       contains
@@ -124,6 +124,7 @@ c
       integer ierr
       character(len=:), allocatable :: message
       ALLOCATE( character(MDI_NAME_LENGTH) :: message )
+      WRITE(6,*)'MDI at node: ',node_name
 c
 c     set the current node
 c
@@ -144,6 +145,7 @@ c
             return
          end if
       end if
+      WRITE(6,*)'MDI listening at node: ',node_name
 c
 c     listen for commands from the driver
 c
@@ -547,7 +549,6 @@ c
 c
 c     if this is the @DEFAULT node, calculate the field
 c
-      write (*,*) 'curent node <FIELD :', current_node
       if ( current_node .eq. "@DEFAULT" ) then
          call induce()
       end if
@@ -590,6 +591,7 @@ c
 
       write(*,*) 'current node <DFIELD :', current_node
       if ( current_node .eq. "@DEFAULT" ) then
+         WRITE(6,*)'calling induce'
          call induce()
       end if
 
@@ -600,7 +602,7 @@ c
       do i=1, nprobes
         do j=1, npole
           do dim=1, 3
-c              field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
+             field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
           end do
         end do
       end do
