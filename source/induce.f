@@ -42,7 +42,7 @@ c
 c     Allocate arrays if using mdi
 c
       if ((use_mdi) .and. (nprobes .gt. 0)) then
-c         write (iout,*)"Allocating arrrays."
+         write (*,*)"Allocating arrrays."
          if (.not. allocated (fielde ) ) then
             allocate( fielde(3, npole) )
          end if
@@ -143,6 +143,7 @@ c
             end do
          end if
       end if
+
       return
       end
 c
@@ -642,6 +643,7 @@ c
             fieldp(j,ii) = 0.0d0
          end do
       end do
+
 c
 c     set the switching function coefficients
 c
@@ -880,29 +882,13 @@ c
                end if
 
                if ((use_mdi) .and. (nprobes .gt. 0)) then
-
                   if (probe_mask(ii) .gt. 0) then
-                      dfield_pair(:, probe_mask(ii), kk) = fid*dscale(k)
-                 end if
+                      dfield_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
+                  end if
 
-                 if (probe_mask(kk) .gt. 0) then
-                      dfield_pair(:, probe_mask(kk), ii) = fkd*dscale(k)
-                end if
-
-c          if ((probe_mask(ii)) .eq. 1) then
-c              write (*,*) kk, fid(1)*dscale(k)
-c          end if
-
-
-c          if ((probe_mask(ii) .eq. 1) .and. (kk .eq. 5)) then
-c
-c            write (*,*) "On 1 from 5 - x", fid(1)*dscale(k)
-c            write (*,*) "On 5 from 1 - x", fkd(1)*dscale(k)
-c            m = probe_mask(ii)
-c            write (*,*) "Stored 1 from 5 - x", dfieldx(kk, m)
-c            m = probe_mask(kk)
-c            write (*,*) "Stored 5 from 1- x", dfieldx(ii, m)
-c          end if
+                  if (probe_mask(kk) .gt. 0) then
+                      dfield_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
+                  end if
 
                end if
 

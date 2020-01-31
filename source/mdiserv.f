@@ -221,7 +221,7 @@ c
          call send_poles(comm)
       case( "<FIELD" )
          call send_field(comm)
-      case( "<DFIELDC" )
+      case( "<DFIELD" )
             call send_dfield_components(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
@@ -547,6 +547,7 @@ c
 c
 c     if this is the @DEFAULT node, calculate the field
 c
+      write (*,*) 'curent node <FIELD :', current_node
       if ( current_node .eq. "@DEFAULT" ) then
          call induce()
       end if
@@ -578,7 +579,7 @@ c     #################################################################
 c
       subroutine send_dfield_components(comm)
       use iounit , only : iout
-      use efield , only : nprobes, fielde, dfield_pair
+      use efield , only : nprobes, dfield_pair, fielde
       use mpole , only : npole
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
 
@@ -587,6 +588,11 @@ c
       integer                      :: ierr, i, j, dim
       real*8                       :: field(3*nprobes*npole)
 
+      write(*,*) 'current node <DFIELD :', current_node
+      if ( current_node .eq. "@DEFAULT" ) then
+         call induce()
+      end if
+
 c
 c     construct the field array
 c
@@ -594,7 +600,7 @@ c
       do i=1, nprobes
         do j=1, npole
           do dim=1, 3
-              field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
+c              field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
           end do
         end do
       end do
