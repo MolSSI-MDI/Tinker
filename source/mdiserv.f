@@ -21,7 +21,8 @@ c
       integer :: mdi_comm = 0
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
-      character(len=MDI_NAME_LENGTH) :: target_node = " "
+      logical :: mdi_ignore_nodes = .false.
+      character(len=MDI_NAME_LENGTH) :: target_node = "@DEFAULT"
       character(len=MDI_NAME_LENGTH) :: current_node = " "
       save
       contains
@@ -124,6 +125,13 @@ c
       integer ierr
       character(len=:), allocatable :: message
       ALLOCATE( character(MDI_NAME_LENGTH) :: message )
+      WRITE(6,*)'MDI at node: ',node_name
+c
+c     ignore this node if the mdi_ignore_nodes flag is set
+c
+      if ( mdi_ignore_nodes ) then
+         return
+      end if
 c
 c     set the current node
 c
@@ -144,6 +152,7 @@ c
             return
          end if
       end if
+      WRITE(6,*)'MDI listening at node: ',node_name
 c
 c     listen for commands from the driver
 c
@@ -221,8 +230,10 @@ c
          call send_poles(comm)
       case( "<FIELD" )
          call send_field(comm)
-      case( "<DFIELDC" )
+      case( "<DFIELD" )
             call send_dfield_components(comm)
+      case( "<UFIELD" )
+            call send_ufield_components(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -532,23 +543,49 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_field(comm)
-      use atoms , only  : n
+      use atoms , only   : n
       use charge , only  : nion, iion, pchg
-      use iounit , only : iout
-      use efield , only : fielde
-      use mpole , only : npole
-1     use mdi , only    : MDI_DOUBLE, MDI_Send
+      use efield , only  : fielde
+      use iounit , only  : iout
+1     use mdi , only     : MDI_DOUBLE, MDI_Send
+      use mpole , only   : npole
+      use uprior , only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, dim
       real*8                       :: charges(n)
       real*8                       :: field(3*npole)
+      real*8                       :: epot
+      real*8, allocatable          :: derivs(:,:)
+      logical                      :: use_pred_original
 c
-c     if this is the @DEFAULT node, calculate the field
+c     the @DEFAULT node must calculate the latest UFIELD
 c
       if ( current_node .eq. "@DEFAULT" ) then
-         call induce()
+c
+c     turn off prediction of induced dipoles
+c
+         use_pred_original = use_pred
+         use_pred = .false.
+c
+c     allocate array to hold gradients
+c
+         allocate( derivs(3,n) )
+c
+c     calculate the gradients
+c
+         mdi_ignore_nodes = .true.
+         call gradient (epot,derivs)
+         mdi_ignore_nodes = .false.
+c
+c     reset prediction of induced dipoles
+c
+         use_pred = use_pred_original
+c
+c     deallocate the gradients
+c
+         deallocate( derivs )
       end if
 c
 c     construct the field array
@@ -568,7 +605,6 @@ c
       end if
       return
       end subroutine send_field
-
 c
 c     #################################################################
 c     ##                                                             ##
@@ -577,28 +613,58 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_dfield_components(comm)
-      use iounit , only : iout
-      use efield , only : nprobes, fielde, dfield_pair
-      use mpole , only : npole
-1     use mdi , only    : MDI_DOUBLE, MDI_Send
+      use atoms , only   : n
+      use efield , only  : nprobes, dfield_pair, fielde
+      use iounit , only  : iout
+1     use mdi , only     : MDI_DOUBLE, MDI_Send
+      use mpole , only   : npole
+      use uprior , only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, i, j, dim
       real*8                       :: field(3*nprobes*npole)
-
+      real*8                       :: epot
+      real*8, allocatable          :: derivs(:,:)
+      logical                      :: use_pred_original
+c
+c     the @DEFAULT node must calculate the latest DFIELD
+c
+      if ( current_node .eq. "@DEFAULT" ) then
+c
+c     turn off prediction of induced dipoles
+c
+         use_pred_original = use_pred
+         use_pred = .false.
+c
+c     allocate array to hold gradients
+c
+         allocate( derivs(3,n) )
+c
+c     calculate the gradients
+c
+         mdi_ignore_nodes = .true.
+         call gradient (epot,derivs)
+         mdi_ignore_nodes = .false.
+c
+c     reset prediction of induced dipoles
+c
+         use_pred = use_pred_original
+c
+c     deallocate the gradients
+c
+         deallocate( derivs )
+      end if
 c
 c     construct the field array
 c
-
       do i=1, nprobes
         do j=1, npole
           do dim=1, 3
-              field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
+             field(3*npole*(i-1)+3*(j-1)+dim) = dfield_pair(dim, j, i)
           end do
         end do
       end do
-
 c
 c     send the field
 c
@@ -609,5 +675,75 @@ c
       end if
       return
       end subroutine send_dfield_components
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_ufield_components  --  Respond to "<UFIELD"##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_ufield_components(comm)
+      use atoms , only   : n
+      use efield , only  : nprobes, ufield_pair, fielde
+      use iounit , only  : iout
+1     use mdi , only     : MDI_DOUBLE, MDI_Send
+      use mpole , only   : npole
+      use uprior , only  : use_pred
+
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, i, j, dim
+      real*8                       :: field(3*nprobes*npole)
+      real*8                       :: epot
+      real*8, allocatable          :: derivs(:,:)
+      logical                      :: use_pred_original
+c
+c     the @DEFAULT node must calculate the latest UFIELD
+c
+      if ( current_node .eq. "@DEFAULT" ) then
+c
+c     turn off prediction of induced dipoles
+c
+         use_pred_original = use_pred
+         use_pred = .false.
+c
+c     allocate array to hold gradients
+c
+         allocate( derivs(3,n) )
+c
+c     calculate the gradients
+c
+         mdi_ignore_nodes = .true.
+         call gradient (epot,derivs)
+         mdi_ignore_nodes = .false.
+c
+c     reset prediction of induced dipoles
+c
+         use_pred = use_pred_original
+c
+c     deallocate the gradients
+c
+         deallocate( derivs )
+      end if
+c
+c     construct the field array
+c
+      do i=1, nprobes
+        do j=1, npole
+          do dim=1, 3
+             field(3*npole*(i-1)+3*(j-1)+dim) = ufield_pair(dim, j, i)
+          end do
+        end do
+      end do
+c
+c     send the field
+c
+      call MDI_Send(field, 3*npole*nprobes, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_ufield_components
 
       end module mdiserv

@@ -42,18 +42,18 @@ c
 c     Allocate arrays if using mdi
 c
       if ((use_mdi) .and. (nprobes .gt. 0)) then
-c         write (iout,*)"Allocating arrrays."
+         write (*,*)"Allocating arrrays."
          if (.not. allocated (fielde ) ) then
             allocate( fielde(3, npole) )
          end if
          if (.not. allocated( dfield_pair ) ) then
             allocate(dfield_pair(3, npole, nprobes))
-            dfield_pair = 0.0
          end if
+         dfield_pair = 0.0
          if (.not. allocated( ufield_pair ) ) then
             allocate(ufield_pair(3, npole, nprobes))
-            ufield_pair = 0.0
          end if
+         ufield_pair = 0.0
       endif
 
 c
@@ -144,6 +144,7 @@ c
             end do
          end if
       end if
+
       return
       end
 c
@@ -574,7 +575,14 @@ c
      &                 7x,'RMS Residual',f15.10)
          end if
 c
-c     terminate the calculation if dipoles fail to converge
+c     calculate the final electric field due to induced dipoles
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+         ufield_pair = 0.0
+         call ufield0a(field,fieldp)
+      end if
+c
+c     terminate the calculation if dipoles failed to converge
 c
          if (iter.ge.maxiter .or. eps.gt.epsold) then
             if (use_ulist) then
@@ -622,14 +630,14 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
       use polgrp
       use polpot
       use shunt
-      use efield
-      use mdiserv
       implicit none
       integer i,j,k,m
       integer ii,kk
@@ -670,6 +678,7 @@ c
             fieldp(j,ii) = 0.0d0
          end do
       end do
+
 c
 c     set the switching function coefficients
 c
@@ -878,15 +887,13 @@ c
                end if
 
                if ((use_mdi) .and. (nprobes .gt. 0)) then
-
                   if (probe_mask(ii) .gt. 0) then
-                      dfield_pair(:, probe_mask(ii), kk) = fid*dscale(k)
+                     dfield_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
                   end if
 
                   if (probe_mask(kk) .gt. 0) then
-                      dfield_pair(:, probe_mask(kk), ii) = fkd*dscale(k)
+                     dfield_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
                   end if
-
                end if
 c
 c     increment the direct electrostatic field components
@@ -1238,6 +1245,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -1402,6 +1411,19 @@ c
                   fieldp(j,ii) = fieldp(j,ii) + fip(j)
                   fieldp(j,kk) = fieldp(j,kk) + fkp(j)
                end do
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+                  if (probe_mask(ii) .gt. 0) then
+c                     write(6,*)'AAA: ',fid
+                     ufield_pair(:, kk, probe_mask(ii)) = fid
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+c                     write(6,*)'BBB: ',fid
+                     ufield_pair(:, ii, probe_mask(kk)) = fkd
+                  end if
+               end if
+
             end if
          end do
 c
