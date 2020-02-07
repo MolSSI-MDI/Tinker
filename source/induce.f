@@ -48,12 +48,12 @@ c
          end if
          if (.not. allocated( dfield_pair ) ) then
             allocate(dfield_pair(3, npole, nprobes))
-            dfield_pair = 0.0
          end if
+         dfield_pair = 0.0
          if (.not. allocated( ufield_pair ) ) then
             allocate(ufield_pair(3, npole, nprobes))
-            ufield_pair = 0.0
          end if
+         ufield_pair = 0.0
       endif
 
 c
@@ -592,14 +592,14 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
       use polgrp
       use polpot
       use shunt
-      use efield
-      use mdiserv
       implicit none
       integer i,j,k,m
       integer ii,kk
@@ -883,13 +883,12 @@ c
 
                if ((use_mdi) .and. (nprobes .gt. 0)) then
                   if (probe_mask(ii) .gt. 0) then
-                      dfield_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
+                     dfield_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
                   end if
 
                   if (probe_mask(kk) .gt. 0) then
-                      dfield_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
+                     dfield_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
                   end if
-
                end if
 
                do j = 1, 3
@@ -1268,6 +1267,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -1444,6 +1445,19 @@ c
                   fieldp(j,ii) = fieldp(j,ii) + fip(j)
                   fieldp(j,kk) = fieldp(j,kk) + fkp(j)
                end do
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+                  if (probe_mask(ii) .gt. 0) then
+c                     write(6,*)'AAA: ',fid
+                     ufield_pair(:, kk, probe_mask(ii)) = fid
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+c                     write(6,*)'BBB: ',fid
+                     ufield_pair(:, ii, probe_mask(kk)) = fkd
+                  end if
+               end if
+
             end if
          end do
 c

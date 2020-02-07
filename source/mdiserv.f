@@ -232,6 +232,8 @@ c
          call send_field(comm)
       case( "<DFIELD" )
             call send_dfield_components(comm)
+      case( "<UFIELD" )
+            call send_ufield_components(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -583,7 +585,6 @@ c
       end if
       return
       end subroutine send_field
-
 c
 c     #################################################################
 c     ##                                                             ##
@@ -604,8 +605,6 @@ c
       real*8                       :: field(3*nprobes*npole)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
-
-      write(*,*) 'current node <DFIELD :', current_node
 c
 c     the @DEFAULT node must calculate the latest DFIELD
 c
@@ -636,5 +635,55 @@ c
       end if
       return
       end subroutine send_dfield_components
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_ufield_components  --  Respond to "<UFIELD"##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_ufield_components(comm)
+      use iounit , only : iout
+      use efield , only : nprobes, ufield_pair, fielde
+      use mpole , only : npole
+      use atoms , only  : n
+1     use mdi , only    : MDI_DOUBLE, MDI_Send
+
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, i, j, dim
+      real*8                       :: field(3*nprobes*npole)
+      real*8                       :: epot
+      real*8, allocatable          :: derivs(:,:)
+c
+c     the @DEFAULT node must calculate the latest UFIELD
+c
+      if ( current_node .eq. "@DEFAULT" ) then
+         allocate( derivs(3,n) )
+         mdi_ignore_nodes = .true.
+         call gradient (epot,derivs)
+         mdi_ignore_nodes = .false.
+         deallocate( derivs )
+      end if
+c
+c     construct the field array
+c
+      do i=1, nprobes
+        do j=1, npole
+          do dim=1, 3
+             field(3*npole*(i-1)+3*(j-1)+dim) = ufield_pair(dim, j, i)
+          end do
+        end do
+      end do
+c
+c     send the field
+c
+      call MDI_Send(field, 3*npole*nprobes, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_ufield_components
 
       end module mdiserv
