@@ -21,6 +21,7 @@ c
       integer :: mdi_comm = 0
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
+      logical :: mdi_ignore_nodes = .false.
       character(len=MDI_NAME_LENGTH) :: target_node = "@DEFAULT"
       character(len=MDI_NAME_LENGTH) :: current_node = " "
       save
@@ -125,6 +126,12 @@ c
       character(len=:), allocatable :: message
       ALLOCATE( character(MDI_NAME_LENGTH) :: message )
       WRITE(6,*)'MDI at node: ',node_name
+c
+c     ignore this node if the mdi_ignore_nodes flag is set
+c
+      if ( mdi_ignore_nodes ) then
+         return
+      end if
 c
 c     set the current node
 c
@@ -546,11 +553,17 @@ c
       integer                      :: ierr, ipole, dim
       real*8                       :: charges(n)
       real*8                       :: field(3*npole)
+      real*8                       :: epot
+      real*8, allocatable          :: derivs(:,:)
 c
-c     if this is the @DEFAULT node, calculate the field
+c     the @DEFAULT node must calculate the latest FIELD
 c
       if ( current_node .eq. "@DEFAULT" ) then
-         call induce()
+         allocate( derivs(3,n) )
+         mdi_ignore_nodes = .true.
+         call gradient (epot,derivs)
+         mdi_ignore_nodes = .false.
+         deallocate( derivs )
       end if
 c
 c     construct the field array
@@ -582,23 +595,30 @@ c
       use iounit , only : iout
       use efield , only : nprobes, dfield_pair, fielde
       use mpole , only : npole
+      use atoms , only  : n
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
 
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, i, j, dim
       real*8                       :: field(3*nprobes*npole)
+      real*8                       :: epot
+      real*8, allocatable          :: derivs(:,:)
 
       write(*,*) 'current node <DFIELD :', current_node
+c
+c     the @DEFAULT node must calculate the latest DFIELD
+c
       if ( current_node .eq. "@DEFAULT" ) then
-         WRITE(6,*)'calling induce'
-         call induce()
+         allocate( derivs(3,n) )
+         mdi_ignore_nodes = .true.
+         call gradient (epot,derivs)
+         mdi_ignore_nodes = .false.
+         deallocate( derivs )
       end if
-
 c
 c     construct the field array
 c
-
       do i=1, nprobes
         do j=1, npole
           do dim=1, 3
@@ -606,7 +626,6 @@ c
           end do
         end do
       end do
-
 c
 c     send the field
 c
