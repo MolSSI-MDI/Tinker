@@ -545,10 +545,11 @@ c
       subroutine send_field(comm)
       use atoms , only  : n
       use charge , only  : nion, iion, pchg
-      use iounit , only : iout
       use efield , only : fielde
-      use mpole , only : npole
+      use iounit , only : iout
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
+      use mpole , only : npole
+      use uprior, only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
@@ -557,14 +558,33 @@ c
       real*8                       :: field(3*npole)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
+      logical                      :: use_pred_original
 c
-c     the @DEFAULT node must calculate the latest FIELD
+c     the @DEFAULT node must calculate the latest UFIELD
 c
       if ( current_node .eq. "@DEFAULT" ) then
+c
+c     turn off prediction of induced dipoles
+c
+         use_pred_original = use_pred
+         use_pred = .false.
+c
+c     allocate array to hold gradients
+c
          allocate( derivs(3,n) )
+c
+c     calculate the gradients
+c
          mdi_ignore_nodes = .true.
          call gradient (epot,derivs)
          mdi_ignore_nodes = .false.
+c
+c     reset prediction of induced dipoles
+c
+         use_pred = use_pred_original
+c
+c     deallocate the gradients
+c
          deallocate( derivs )
       end if
 c
@@ -593,11 +613,12 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_dfield_components(comm)
-      use iounit , only : iout
-      use efield , only : nprobes, dfield_pair, fielde
-      use mpole , only : npole
       use atoms , only  : n
+      use efield , only : nprobes, dfield_pair, fielde
+      use iounit , only : iout
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
+      use mpole , only : npole
+      use uprior, only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
@@ -605,14 +626,33 @@ c
       real*8                       :: field(3*nprobes*npole)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
+      logical                      :: use_pred_original
 c
 c     the @DEFAULT node must calculate the latest DFIELD
 c
       if ( current_node .eq. "@DEFAULT" ) then
+c
+c     turn off prediction of induced dipoles
+c
+         use_pred_original = use_pred
+         use_pred = .false.
+c
+c     allocate array to hold gradients
+c
          allocate( derivs(3,n) )
+c
+c     calculate the gradients
+c
          mdi_ignore_nodes = .true.
          call gradient (epot,derivs)
          mdi_ignore_nodes = .false.
+c
+c     reset prediction of induced dipoles
+c
+         use_pred = use_pred_original
+c
+c     deallocate the gradients
+c
          deallocate( derivs )
       end if
 c
@@ -643,11 +683,12 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_ufield_components(comm)
-      use iounit , only : iout
-      use efield , only : nprobes, ufield_pair, fielde
-      use mpole , only : npole
       use atoms , only  : n
+      use efield , only : nprobes, ufield_pair, fielde
+      use iounit , only : iout
 1     use mdi , only    : MDI_DOUBLE, MDI_Send
+      use mpole , only  : npole
+      use uprior, only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
@@ -655,14 +696,33 @@ c
       real*8                       :: field(3*nprobes*npole)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
+      logical                      :: use_pred_original
 c
 c     the @DEFAULT node must calculate the latest UFIELD
 c
       if ( current_node .eq. "@DEFAULT" ) then
+c
+c     turn off prediction of induced dipoles
+c
+         use_pred_original = use_pred
+         use_pred = .false.
+c
+c     allocate array to hold gradients
+c
          allocate( derivs(3,n) )
+c
+c     calculate the gradients
+c
          mdi_ignore_nodes = .true.
          call gradient (epot,derivs)
          mdi_ignore_nodes = .false.
+c
+c     reset prediction of induced dipoles
+c
+         use_pred = use_pred_original
+c
+c     deallocate the gradients
+c
          deallocate( derivs )
       end if
 c
