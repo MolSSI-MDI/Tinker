@@ -543,13 +543,13 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_field(comm)
-      use atoms , only  : n
+      use atoms , only   : n
       use charge , only  : nion, iion, pchg
-      use efield , only : fielde
-      use iounit , only : iout
-1     use mdi , only    : MDI_DOUBLE, MDI_Send
-      use mpole , only : npole
-      use uprior, only  : use_pred
+      use efield , only  : fielde
+      use iounit , only  : iout
+1     use mdi , only     : MDI_DOUBLE, MDI_Send
+      use mpole , only   : npole
+      use uprior , only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
@@ -613,12 +613,12 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_dfield_components(comm)
-      use atoms , only  : n
-      use efield , only : nprobes, dfield_pair, fielde
-      use iounit , only : iout
-1     use mdi , only    : MDI_DOUBLE, MDI_Send
-      use mpole , only : npole
-      use uprior, only  : use_pred
+      use atoms , only   : n
+      use efield , only  : nprobes, dfield_pair, fielde
+      use iounit , only  : iout
+1     use mdi , only     : MDI_DOUBLE, MDI_Send
+      use mpole , only   : npole
+      use uprior , only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
@@ -683,12 +683,12 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_ufield_components(comm)
-      use atoms , only  : n
-      use efield , only : nprobes, ufield_pair, fielde
-      use iounit , only : iout
-1     use mdi , only    : MDI_DOUBLE, MDI_Send
-      use mpole , only  : npole
-      use uprior, only  : use_pred
+      use atoms , only   : n
+      use efield , only  : nprobes, ufield_pair, fielde
+      use iounit , only  : iout
+1     use mdi , only     : MDI_DOUBLE, MDI_Send
+      use mpole , only   : npole
+      use uprior , only  : use_pred
 
       implicit none
       integer, intent(in)          :: comm
