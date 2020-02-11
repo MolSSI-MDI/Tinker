@@ -555,6 +555,12 @@ c
      &                 6x,'RMS Residual',f15.10)
          end if
 c
+c     calculate the final electric field due to induced dipoles
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+         call ufield0a(field,fieldp)
+      end if
+c
 c     terminate the calculation if dipoles failed to converge
 c
          if (iter.ge.maxiter .or. eps.gt.epsold) then
