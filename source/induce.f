@@ -558,6 +558,7 @@ c
 c     calculate the final electric field due to induced dipoles
 c
       if ((use_mdi) .and. (nprobes .gt. 0)) then
+         ufield_pair = 0.0
          call ufield0a(field,fieldp)
       end if
 c
