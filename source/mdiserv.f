@@ -228,6 +228,8 @@ c
          call send_npoles(comm)
       case( "<POLES" )
          call send_poles(comm)
+      case( "<IPOLES" )
+            call send_pole_indices(comm)
       case( "<FIELD" )
          call send_field(comm)
       case( "<DFIELD" )
@@ -614,6 +616,44 @@ c
       end if
       return
       end subroutine send_molecules
+
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_pole_indices  --  Respond to "<IPOLES"     ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_pole_indices(comm)
+        use iounit , only : iout
+   1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+        use mpole , only  : ipole, npole
+        use atoms , only : n
+        implicit none
+        integer, intent(in)          :: comm
+        integer                      :: ierr, polei, pole_ind
+        real*8                       :: pole_buf(n)
+
+        pole_buf = 0.0
+
+c
+c     prepare the pole index buffer
+c
+      do polei=1, npole
+          pole_ind = ipole(polei)
+          pole_buf(pole_ind) = polei
+      end do
+c
+c     send the residues
+c
+      call MDI_Send(pole_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_IPOLE -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_pole_indices
 
 
 c
