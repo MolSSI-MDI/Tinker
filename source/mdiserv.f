@@ -228,12 +228,18 @@ c
          call send_npoles(comm)
       case( "<POLES" )
          call send_poles(comm)
+      case( "<IPOLES" )
+            call send_pole_indices(comm)
       case( "<FIELD" )
          call send_field(comm)
       case( "<DFIELD" )
             call send_dfield_components(comm)
       case( "<UFIELD" )
             call send_ufield_components(comm)
+      case( "<RESIDUES" )
+            call send_residues(comm)
+      case( "<MOLECULES" )
+            call send_molecules(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -534,6 +540,122 @@ c
       end if
       return
       end subroutine send_poles
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_residues  --  Respond to "<RESIDUES"       ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_residues(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+      use pdb , only  : resnum
+      use atoms , only : n
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8                       :: res_buf(n)
+
+c
+c     if residues are not used in the simulation, resnum will not be allocated.
+c
+      if (.not. allocated (resnum ) ) then
+         allocate( resnum(n) )
+      end if
+      resnum = 0.0
+
+c
+c     prepare the residue buffer
+c
+      do iatom=1, n
+          res_buf(iatom) = resnum(iatom)
+      end do
+c
+c     send the residues
+c
+      call MDI_Send(res_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_RESIDUES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_residues
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_molecules  --  Respond to "<MOLECULES"     ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_molecules(comm)
+        use iounit , only : iout
+   1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+        use molcul , only  : molcule
+        use atoms , only : n
+        implicit none
+        integer, intent(in)          :: comm
+        integer                      :: ierr, iatom
+        real*8                       :: mol_buf(n)
+
+c
+c     prepare the residue buffer
+c
+      do iatom=1, n
+          mol_buf(iatom) = molcule(iatom)
+      end do
+c
+c     send the residues
+c
+      call MDI_Send(mol_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_MOLECULES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_molecules
+
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_pole_indices  --  Respond to "<IPOLES"     ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_pole_indices(comm)
+        use iounit , only : iout
+   1    use mdi , only    : MDI_INT, MDI_Send, MDI_Conversion_Factor
+        use mpole , only  : ipole, npole
+        use atoms , only : n
+        implicit none
+        integer, intent(in)          :: comm
+        integer                      :: ierr, polei, pole_ind
+        integer, allocatable         :: pole_buf(:)
+
+        allocate( pole_buf(n) )
+        pole_buf = 0
+c
+c     prepare the pole index buffer
+c
+      do polei=1, npole
+          pole_ind = ipole(polei)
+          pole_buf(pole_ind) = polei
+      end do
+c
+c     send the residues
+c
+      call MDI_Send(pole_buf, n, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_IPOLE -- MDI_Send failed'
+         call fatal
+      end if
+      deallocate( pole_buf )
+      return
+      end subroutine send_pole_indices
+
 
 c
 c     #################################################################
