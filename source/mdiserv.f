@@ -234,6 +234,8 @@ c
             call send_dfield_components(comm)
       case( "<UFIELD" )
             call send_ufield_components(comm)
+      case( "<RESIDUES" )
+            call send_residues(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -534,6 +536,42 @@ c
       end if
       return
       end subroutine send_poles
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_residues  --  Respond to "<RESIDUES"       ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_residues(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+      use pdb , only  : resnum
+      use atoms , only : n
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8                       :: res_buf(n)
+
+c
+c     prepare the residue buffer
+c
+      do iatom=1, n
+          res_buf(iatom) = resnum(iatom)
+      end do
+c
+c     send the residues
+c
+      call MDI_Send(res_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_RESIDUES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_residues
+
+
 
 c
 c     #################################################################
