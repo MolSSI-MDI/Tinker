@@ -557,6 +557,14 @@ c
       real*8                       :: res_buf(n)
 
 c
+c     if residues are not used in the simulation, resnum will not be allocated.
+c
+      if (.not. allocated (resnum ) ) then
+         allocate( resnum(n) )
+      end if
+      resnum = 0.0
+
+c
 c     prepare the residue buffer
 c
       do iatom=1, n
