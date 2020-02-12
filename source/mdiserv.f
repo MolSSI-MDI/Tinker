@@ -236,6 +236,8 @@ c
             call send_ufield_components(comm)
       case( "<RESIDUES" )
             call send_residues(comm)
+      case( "<MOLECULES" )
+            call send_molecules(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -571,6 +573,39 @@ c
       return
       end subroutine send_residues
 
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_molecules  --  Respond to "<MOLECULES"     ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_molecules(comm)
+        use iounit , only : iout
+   1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+        use molcul , only  : molcule
+        use atoms , only : n
+        implicit none
+        integer, intent(in)          :: comm
+        integer                      :: ierr, iatom
+        real*8                       :: mol_buf(n)
+
+c
+c     prepare the residue buffer
+c
+      do iatom=1, n
+          mol_buf(iatom) = molcule(iatom)
+      end do
+c
+c     send the residues
+c
+      call MDI_Send(mol_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_MOLECULES -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_molecules
 
 
 c
