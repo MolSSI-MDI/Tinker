@@ -627,16 +627,16 @@ c     #################################################################
 c
       subroutine send_pole_indices(comm)
         use iounit , only : iout
-   1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+   1    use mdi , only    : MDI_INT, MDI_Send, MDI_Conversion_Factor
         use mpole , only  : ipole, npole
         use atoms , only : n
         implicit none
         integer, intent(in)          :: comm
         integer                      :: ierr, polei, pole_ind
-        real*8                       :: pole_buf(n)
+        integer, allocatable         :: pole_buf(:)
 
-        pole_buf = 0.0
-
+        allocate( pole_buf(n) )
+        pole_buf = 0
 c
 c     prepare the pole index buffer
 c
@@ -647,11 +647,12 @@ c
 c
 c     send the residues
 c
-      call MDI_Send(pole_buf, n, MDI_DOUBLE, comm, ierr)
+      call MDI_Send(pole_buf, n, MDI_INT, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_IPOLE -- MDI_Send failed'
          call fatal
       end if
+      deallocate( pole_buf )
       return
       end subroutine send_pole_indices
 
