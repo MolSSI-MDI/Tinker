@@ -550,13 +550,13 @@ c     #################################################################
 c
       subroutine send_residues(comm)
       use iounit , only : iout
- 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+ 1    use mdi , only    : MDI_INT, MDI_Send, MDI_Conversion_Factor
       use pdb , only  : resnum
       use atoms , only : n
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iatom
-      real*8                       :: res_buf(n)
+      integer                      :: res_buf(n)
 
 c
 c     if residues are not used in the simulation, resnum will not be allocated.
@@ -575,7 +575,7 @@ c
 c
 c     send the residues
 c
-      call MDI_Send(res_buf, n, MDI_DOUBLE, comm, ierr)
+      call MDI_Send(res_buf, n, MDI_INT, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_RESIDUES -- MDI_Send failed'
          call fatal
@@ -592,13 +592,13 @@ c     #################################################################
 c
       subroutine send_molecules(comm)
         use iounit , only : iout
-   1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+   1    use mdi , only    : MDI_INT, MDI_Send, MDI_Conversion_Factor
         use molcul , only  : molcule
         use atoms , only : n
         implicit none
         integer, intent(in)          :: comm
         integer                      :: ierr, iatom
-        real*8                       :: mol_buf(n)
+        integer                      :: mol_buf(n)
 
 c
 c     prepare the residue buffer
@@ -609,7 +609,7 @@ c
 c
 c     send the residues
 c
-      call MDI_Send(mol_buf, n, MDI_DOUBLE, comm, ierr)
+      call MDI_Send(mol_buf, n, MDI_INT, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_MOLECULES -- MDI_Send failed'
          call fatal
@@ -645,7 +645,7 @@ c
           pole_buf(pole_ind) = polei
       end do
 c
-c     send the residues
+c     send the pole indices
 c
       call MDI_Send(pole_buf, n, MDI_INT, comm, ierr)
       if ( ierr .ne. 0 ) then
