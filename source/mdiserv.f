@@ -22,6 +22,7 @@ c
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
       logical :: mdi_ignore_nodes = .false.
+      logical :: forces_need_update = .true.
       character(len=MDI_NAME_LENGTH) :: target_node = "@DEFAULT"
       character(len=MDI_NAME_LENGTH) :: current_node = " "
       save
@@ -381,6 +382,10 @@ c
         y(iatom) = coords( 3*(iatom-1) + 2 ) * conv
         z(iatom) = coords( 3*(iatom-1) + 3 ) * conv
       end do
+c
+c     the forces are now out-of-date
+c
+      forces_need_update = .true.
       return
       end subroutine recv_coords
 
@@ -684,7 +689,7 @@ c
 c
 c     the @DEFAULT node must calculate the latest UFIELD
 c
-      if ( current_node .eq. "@DEFAULT" ) then
+      if ( current_node .eq. "@DEFAULT" .and. forces_need_update ) then
 c
 c     turn off prediction of induced dipoles
 c
@@ -700,6 +705,7 @@ c
          mdi_ignore_nodes = .true.
          call gradient (epot,derivs)
          mdi_ignore_nodes = .false.
+         forces_need_update = .false.
 c
 c     reset prediction of induced dipoles
 c
@@ -752,7 +758,7 @@ c
 c
 c     the @DEFAULT node must calculate the latest DFIELD
 c
-      if ( current_node .eq. "@DEFAULT" ) then
+      if ( current_node .eq. "@DEFAULT" .and. forces_need_update ) then
 c
 c     turn off prediction of induced dipoles
 c
@@ -767,6 +773,7 @@ c     calculate the gradients
 c
          mdi_ignore_nodes = .true.
          call gradient (epot,derivs)
+         forces_need_update = .false.
          mdi_ignore_nodes = .false.
 c
 c     reset prediction of induced dipoles
@@ -822,7 +829,7 @@ c
 c
 c     the @DEFAULT node must calculate the latest UFIELD
 c
-      if ( current_node .eq. "@DEFAULT" ) then
+      if ( current_node .eq. "@DEFAULT" .and. forces_need_update ) then
 c
 c     turn off prediction of induced dipoles
 c
@@ -837,6 +844,7 @@ c     calculate the gradients
 c
          mdi_ignore_nodes = .true.
          call gradient (epot,derivs)
+         forces_need_update = .false.
          mdi_ignore_nodes = .false.
 c
 c     reset prediction of induced dipoles
