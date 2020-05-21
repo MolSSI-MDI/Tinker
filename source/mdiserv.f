@@ -480,6 +480,9 @@ c
         integer, intent(in)          :: comm
         integer                      :: ierr, iprobe, i, count
 
+ 
+        if ( allocated( probes ) ) deallocate (probes)
+        if ( allocated( probe_mask ) ) deallocate (probe_mask)
         allocate (probes(nprobes))
         allocate (probe_mask(npole))
 
