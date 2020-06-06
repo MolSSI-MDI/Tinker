@@ -90,6 +90,10 @@ c
         end if
       end if
       mdi_exit = .false.
+c
+c     zero nprobes
+c
+      nprobes = 0
 
       return
       end subroutine init_mdi
@@ -278,7 +282,9 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iatom
-      real*8                       :: charges(n)
+      real*8, allocatable          :: charges(:)
+
+      allocate( charges(n) )
 c
 c     construct the charges array
 c
@@ -296,6 +302,7 @@ c
          write(iout,*)'SEND_CHARGES -- MDI_Send failed'
          call fatal
       end if
+      deallocate( charges )
       return
       end subroutine send_charges
 c
@@ -312,8 +319,10 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iatom
-      real*8                       :: coords(3*n)
+      real*8, allocatable          :: coords(:)
       real*8                       :: conv
+
+      allocate( coords(3*n) )
 c
 c     get the conversion factor from angstrom to a.u.
 c
@@ -339,6 +348,7 @@ c
          write(iout,*)'SEND_NCOORDS -- MDI_Send failed'
          call fatal
       end if
+      deallocate( coords )
       return
       end subroutine send_coords
 c
@@ -355,8 +365,10 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iatom
-      real*8                       :: coords(3*n)
+      real*8, allocatable          :: coords(:)
       real*8                       :: conv
+
+      allocate( coords(3*n) )
 c
 c     get the conversion factor from a.u. to angstrom
 c
@@ -386,6 +398,7 @@ c
 c     the forces are now out-of-date
 c
       forces_need_update = .true.
+      deallocate( coords )
       return
       end subroutine recv_coords
 
@@ -448,7 +461,8 @@ c
       subroutine recv_nprobes(comm)
          use iounit , only : iout
 1        use mdi , only    : MDI_DOUBLE, MDI_INT, MDI_Recv
-         use efield , only : nprobes
+         use efield , only : nprobes, probes, probe_mask
+         use mpole , only  : npole
          implicit none
          integer, intent(in)          :: comm
          integer                      :: ierr, iprobe
@@ -461,6 +475,14 @@ c
             write(iout,*)'RECV_ -- MDI_Recv failed'
             call fatal
          end if
+c
+c     allocate all arrays associated with the probes
+c
+        if ( allocated( probes ) ) deallocate (probes)
+        if ( allocated( probe_mask ) ) deallocate (probe_mask)
+        allocate (probes(nprobes))
+        allocate (probe_mask(npole))
+
       return
       end subroutine recv_nprobes
 
@@ -480,12 +502,18 @@ c
         integer, intent(in)          :: comm
         integer                      :: ierr, iprobe, i, count
 
- 
-        if ( allocated( probes ) ) deallocate (probes)
-        if ( allocated( probe_mask ) ) deallocate (probe_mask)
-        allocate (probes(nprobes))
-        allocate (probe_mask(npole))
-
+        if ( nprobes .eq. 0 ) then
+           write(iout,*)'Must receive >NPROBES before >PROBES'
+           call fatal
+        end if
+        if ( .not. allocated( probes ) ) then
+           write(iout,*)'>NPROBES: probes not allocated'
+           call fatal
+        end if
+        if ( .not. allocated( probe_mask ) ) then
+           write(iout,*)'>NPROBES: probe_mask not allocated'
+           call fatal
+        end if
 c
 c     receive the probes
 c
@@ -528,11 +556,12 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, icomp
-      real*8                       :: poles_buf(13*npole)
+      real*8, allocatable          :: poles_buf(:)
       real*8                       :: conv
 c
 c     prepare the poles buffer
 c
+      allocate( poles_buf(13*npole) )
       do ipole=1, npole
          do icomp=1, 13
             poles_buf(13*(ipole-1) + icomp) = rpole(icomp, ipole)
@@ -546,6 +575,7 @@ c
          write(iout,*)'SEND_POLES -- MDI_Send failed'
          call fatal
       end if
+      deallocate( poles_buf )
       return
       end subroutine send_poles
 
@@ -564,11 +594,12 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iatom
-      integer                      :: res_buf(n)
+      integer, allocatable         :: res_buf(:)
 
 c
 c     if residues are not used in the simulation, resnum will not be allocated.
 c
+      allocate( res_buf(n) )
       if (.not. allocated (resnum ) ) then
          allocate( resnum(n) )
       end if
@@ -588,6 +619,7 @@ c
          write(iout,*)'SEND_RESIDUES -- MDI_Send failed'
          call fatal
       end if
+      deallocate( res_buf )
       return
       end subroutine send_residues
 
@@ -606,11 +638,12 @@ c
         implicit none
         integer, intent(in)          :: comm
         integer                      :: ierr, iatom
-        integer                      :: mol_buf(n)
+        integer, allocatable         :: mol_buf(:)
 
 c
 c     prepare the residue buffer
 c
+      allocate( mol_buf(n) )
       do iatom=1, n
           mol_buf(iatom) = molcule(iatom)
       end do
@@ -622,6 +655,7 @@ c
          write(iout,*)'SEND_MOLECULES -- MDI_Send failed'
          call fatal
       end if
+      deallocate( mol_buf )
       return
       end subroutine send_molecules
 
@@ -684,14 +718,14 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, ipole, dim
-      real*8                       :: charges(n)
-      real*8                       :: field(3*npole)
+      real*8, allocatable          :: field(:)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
       logical                      :: use_pred_original
 c
 c     the @DEFAULT node must calculate the latest UFIELD
 c
+      allocate( field(3*npole) )
       if ( current_node .eq. "@DEFAULT" .and. forces_need_update ) then
 c
 c     turn off prediction of induced dipoles
@@ -731,9 +765,10 @@ c     send the field
 c
       call MDI_Send(field, 3*npole, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'SEND_CHARGES -- MDI_Send failed'
+         write(iout,*)'SEND_FIELD -- MDI_Send failed'
          call fatal
       end if
+      deallocate( field )
       return
       end subroutine send_field
 c
@@ -754,13 +789,14 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, i, j, dim
-      real*8                       :: field(3*nprobes*npole)
+      real*8, allocatable          :: field(:)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
       logical                      :: use_pred_original
 c
 c     the @DEFAULT node must calculate the latest DFIELD
 c
+      allocate( field(3*nprobes*npole) )
       if ( current_node .eq. "@DEFAULT" .and. forces_need_update ) then
 c
 c     turn off prediction of induced dipoles
@@ -805,6 +841,7 @@ c
          write(iout,*)'SEND_CHARGES -- MDI_Send failed'
          call fatal
       end if
+      deallocate( field )
       return
       end subroutine send_dfield_components
 c
@@ -825,13 +862,14 @@ c
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, i, j, dim
-      real*8                       :: field(3*nprobes*npole)
+      real*8, allocatable          :: field(:)
       real*8                       :: epot
       real*8, allocatable          :: derivs(:,:)
       logical                      :: use_pred_original
 c
 c     the @DEFAULT node must calculate the latest UFIELD
 c
+      allocate( field(3*nprobes*npole) )
       if ( current_node .eq. "@DEFAULT" .and. forces_need_update ) then
 c
 c     turn off prediction of induced dipoles
@@ -876,6 +914,7 @@ c
          write(iout,*)'SEND_CHARGES -- MDI_Send failed'
          call fatal
       end if
+      deallocate( field )
       return
       end subroutine send_ufield_components
 
