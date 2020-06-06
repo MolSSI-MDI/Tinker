@@ -23,8 +23,5 @@ c
       real*8, allocatable :: fielde(:,:)
       real*8, allocatable :: dfield_pair(:,:,:)
       real*8, allocatable :: ufield_pair(:,:,:)
-      real*8, allocatable :: dfieldx(:,:)
-      real*8, allocatable :: dfieldy(:,:)
-      real*8, allocatable :: dfieldz(:,:)
       save
       end
