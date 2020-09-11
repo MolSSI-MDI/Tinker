@@ -25,6 +25,7 @@ c
       use inform
       use iounit
       use keys
+      use mdiserv
       use mdstuf
       use potent
       use stodyn
@@ -32,6 +33,7 @@ c
       implicit none
       integer i,istep,nstep
       integer mode,next
+      integer mpi_comm, ierr
       real*8 dt,dtsave
       logical exist
       character*20 keyword
@@ -268,9 +270,17 @@ c
       end if
       flush (iout)
 c
+c     have MDI listen at the @DEFAULT and @INIT_MD nodes
+c
+      if (use_mdi) then
+         call mdi_listen("@DEFAULT")
+         call mdi_listen("@INIT_MD")
+      end if
+c
 c     integrate equations of motion to take a time step
 c
-      do istep = 1, nstep
+      istep = 1
+      do while ( istep .le. nstep )
          if (integrate .eq. 'VERLET') then
             call verlet (istep,dt)
          else if (integrate .eq. 'STOCHASTIC') then
@@ -290,6 +300,13 @@ c
          else
             call beeman (istep,dt)
          end if
+c
+c     Allow MDI to update the number of steps
+c
+         if ( use_mdi ) then
+            call mdi_set_steps(istep, nstep)
+         end if
+         istep = istep + 1
       end do
 c
 c     perform any final tasks before program exit

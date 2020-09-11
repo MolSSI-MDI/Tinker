@@ -21,3 +21,4 @@ source/*.x
 source/*.make
 source/*-*
 usage
+build/*

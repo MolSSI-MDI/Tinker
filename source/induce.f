@@ -31,10 +31,31 @@ c
       use solpot
       use units
       use uprior
+      use efield
+      use mdiserv
       implicit none
       integer i,j,k,ii
       real*8 norm
       logical header
+
+c
+c     Allocate arrays if using mdi
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+         write (*,*)"Allocating arrrays."
+         if (.not. allocated (fielde ) ) then
+            allocate( fielde(3, npole) )
+         end if
+         if (.not. allocated( dfield_pair ) ) then
+            allocate(dfield_pair(3, npole, nprobes))
+         end if
+         dfield_pair = 0.0
+         if (.not. allocated( ufield_pair ) ) then
+            allocate(ufield_pair(3, npole, nprobes))
+         end if
+         ufield_pair = 0.0
+      endif
+
 c
 c
 c     choose the method for computation of induced dipoles
@@ -122,6 +143,7 @@ c
             end do
          end if
       end if
+
       return
       end
 c
@@ -151,6 +173,8 @@ c
       use potent
       use units
       use uprior
+      use mdiserv
+      use efield
       implicit none
       integer i,j,k,iter
       integer maxiter
@@ -201,6 +225,14 @@ c
       else
          call dfield0a (field,fieldp)
       end if
+
+c -2.364E-2
+c     store electric field in permanent array
+c
+      if (use_mdi) then
+         fielde = field
+      endif
+
 c
 c     set induced dipoles to polarizability times direct field
 c
@@ -523,6 +555,13 @@ c
      &                 6x,'RMS Residual',f15.10)
          end if
 c
+c     calculate the final electric field due to induced dipoles
+c
+      if ((use_mdi) .and. (nprobes .gt. 0)) then
+         ufield_pair = 0.0
+         call ufield0a(field,fieldp)
+      end if
+c
 c     terminate the calculation if dipoles failed to converge
 c
          if (iter.ge.maxiter .or. eps.gt.epsold) then
@@ -533,6 +572,7 @@ c
             call fatal
          end if
       end if
+
 c
 c     perform deallocation of some local arrays
 c
@@ -559,6 +599,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -597,6 +639,7 @@ c
       real*8 field(3,*)
       real*8 fieldp(3,*)
       character*6 mode
+
 c
 c
 c     zero out the value of the field at each site
@@ -607,6 +650,7 @@ c
             fieldp(j,ii) = 0.0d0
          end do
       end do
+
 c
 c     set the switching function coefficients
 c
@@ -774,8 +818,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -826,7 +870,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
@@ -843,6 +887,17 @@ c
      &                        + rr5i*dir + rr7i*qir)
      &                        - rr3i*diz - 2.0d0*rr5i*qiz
                end if
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+                  if (probe_mask(ii) .gt. 0) then
+                     dfield_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+                     dfield_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
+                  end if
+               end if
+
                do j = 1, 3
                   field(j,ii) = field(j,ii) + fid(j)*dscale(k)
                   field(j,kk) = field(j,kk) + fkd(j)*dscale(k)
@@ -851,6 +906,7 @@ c
                end do
             end if
          end do
+
 c
 c     reset exclusion coefficients for connected atoms
 c
@@ -1050,8 +1106,8 @@ c
                            if (pgamma .ne. 0.0d0) then
                               damp = pgamma * (r/damp)**(1.5d0)
                               if (damp .lt. 50.0d0) then
-                                 expdamp = exp(-damp) 
-                                 scale3 = 1.0d0 - expdamp 
+                                 expdamp = exp(-damp)
+                                 scale3 = 1.0d0 - expdamp
                                  scale5 = 1.0d0 - expdamp
      &                                               *(1.0d0+0.5d0*damp)
                                  scale7 = 1.0d0 - expdamp
@@ -1104,7 +1160,7 @@ c
                         rr7k = dmpk(7) * rr7
                         fid(1) = -xr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr + rr7k*qkr)
-     &                              - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                              - rr3k*dkx + 2.0d0*rr5k*qkx
                         fid(2) = -yr*(rr3*corek + rr3k*valk
      &                              - rr5k*dkr+rr7k*qkr)
      &                              - rr3k*dky + 2.0d0*rr5k*qky
@@ -1218,6 +1274,8 @@ c
       use cell
       use chgpen
       use couple
+      use efield
+      use mdiserv
       use mplpot
       use mpole
       use polar
@@ -1394,6 +1452,19 @@ c
                   fieldp(j,ii) = fieldp(j,ii) + fip(j)
                   fieldp(j,kk) = fieldp(j,kk) + fkp(j)
                end do
+
+               if ((use_mdi) .and. (nprobes .gt. 0)) then
+                  if (probe_mask(ii) .gt. 0) then
+c                     write(6,*)'AAA: ',fid
+                     ufield_pair(:, kk, probe_mask(ii)) = fid
+                  end if
+
+                  if (probe_mask(kk) .gt. 0) then
+c                     write(6,*)'BBB: ',fid
+                     ufield_pair(:, ii, probe_mask(kk)) = fkd
+                  end if
+               end if
+
             end if
          end do
 c
@@ -1845,8 +1916,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -1897,7 +1968,7 @@ c
                   rr7k = dmpk(7) * rr7
                   fid(1) = -xr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
-     &                        - rr3k*dkx + 2.0d0*rr5k*qkx        
+     &                        - rr3k*dkx + 2.0d0*rr5k*qkx
                   fid(2) = -yr*(rr3*corek + rr3k*valk
      &                        - rr5k*dkr + rr7k*qkr)
      &                        - rr3k*dky + 2.0d0*rr5k*qky
@@ -2790,8 +2861,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -3132,8 +3203,8 @@ c
                            if (pgamma .ne. 0.0d0) then
                               damp = pgamma * (r/damp)**(1.5d0)
                               if (damp .lt. 50.0d0) then
-                                 expdamp = exp(-damp) 
-                                 scale3 = 1.0d0 - expdamp 
+                                 expdamp = exp(-damp)
+                                 scale3 = 1.0d0 - expdamp
                                  scale5 = 1.0d0 - expdamp
      &                                               *(1.0d0+0.5d0*damp)
                                  scale7 = 1.0d0 - expdamp
@@ -3674,8 +3745,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)
@@ -5464,8 +5535,8 @@ c
                         if (pgamma .ne. 0.0d0) then
                            damp = pgamma * (r/damp)**(1.5d0)
                            if (damp .lt. 50.0d0) then
-                              expdamp = exp(-damp) 
-                              scale3 = 1.0d0 - expdamp 
+                              expdamp = exp(-damp)
+                              scale3 = 1.0d0 - expdamp
                               scale5 = 1.0d0 - expdamp
      &                                            *(1.0d0+0.5d0*damp)
                               scale7 = 1.0d0 - expdamp
@@ -6775,8 +6846,8 @@ c
                      if (pgamma .ne. 0.0d0) then
                         damp = pgamma * (r/damp)**(1.5d0)
                         if (damp .lt. 50.0d0) then
-                           expdamp = exp(-damp) 
-                           scale3 = 1.0d0 - expdamp 
+                           expdamp = exp(-damp)
+                           scale3 = 1.0d0 - expdamp
                            scale5 = 1.0d0 - expdamp*(1.0d0+0.5d0*damp)
                            scale7 = 1.0d0 - expdamp*(1.0d0+0.65d0*damp
      &                                         +0.15d0*damp**2)

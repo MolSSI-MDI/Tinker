@@ -35,6 +35,7 @@ c
       use iounit
       use keys
       use linmin
+      use mdiserv
       use minima
       use molcul
       use mutant
@@ -221,5 +222,9 @@ c
       iprint = -1
       iwrite = -1
       stpmax = 0.0d0
+c
+c     initialize the MDI server
+c
+      call init_mdi()
       return
       end
