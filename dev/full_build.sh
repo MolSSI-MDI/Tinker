@@ -13,6 +13,7 @@ HOME=${build_dir}
 # Compile the FFTW library
 cp -r ../../fftw .
 cp -r ../../mdi .
+cp -r ../../params .
 cd fftw
 ls
 ./configure --enable-threads --prefix=${build_dir}/tinker/fftw
