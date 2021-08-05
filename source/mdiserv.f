@@ -25,6 +25,7 @@ c
       logical :: forces_need_update = .true.
       character(len=MDI_NAME_LENGTH) :: target_node = "@DEFAULT"
       character(len=MDI_NAME_LENGTH) :: current_node = " "
+      real*8, pointer, dimension (:,:)   :: forces_ptr
       save
       contains
 c
@@ -119,6 +120,19 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
+c     ##  subroutine mdi_set_forces  --  Set a pointer to the foces  ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine mdi_set_forces(forces)
+      use atoms , only  : n
+      real*8, target, intent(in)         :: forces(3,n)
+      forces_ptr => forces
+      end subroutine mdi_set_forces
+
+c
+c     #################################################################
+c     ##                                                             ##
 c     ##  subroutine mdi_listen  --  Listen for commands             ##
 c     ##                                                             ##
 c     #################################################################
@@ -129,6 +143,9 @@ c
       character(len=*), intent(in) :: node_name
       integer ierr
       character(len=:), allocatable :: message
+c
+c     allocate memory to recieve an MDI command
+c
       ALLOCATE( character(MDI_NAME_LENGTH) :: message )
       WRITE(6,*)'MDI at node: ',node_name
 c
@@ -227,10 +244,20 @@ c
          call send_coords(comm)
       case( ">COORDS" )
          call recv_coords(comm)
+      case( "<ENERGY" )
+         call send_energy(comm)
+      case( "<FORCES" )
+         call send_forces(comm)
+      case( ">FORCES" )
+         call recv_forces(comm)
+      case( "<KE" )
+         call send_ke(comm)
       case( "<NATOMS" )
          call send_natoms(comm)
       case( "<NPOLES" )
          call send_npoles(comm)
+      case( "<PE" )
+         call send_pe(comm)
       case( "<POLES" )
          call send_poles(comm)
       case( "<IPOLES" )
@@ -329,7 +356,7 @@ c
       call MDI_Conversion_Factor("angstrom", "atomic_unit_of_length",
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'SEND_NCOORDS -- MDI_Conversion_Factor failed'
+         write(iout,*)'SEND_COORDS -- MDI_Conversion_Factor failed'
          call fatal
       end if
 c
@@ -345,7 +372,7 @@ c     send the coordinates
 c
       call MDI_Send(coords, 3*n, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'SEND_NCOORDS -- MDI_Send failed'
+         write(iout,*)'SEND_COORDS -- MDI_Send failed'
          call fatal
       end if
       deallocate( coords )
@@ -375,7 +402,7 @@ c
       call MDI_Conversion_Factor("atomic_unit_of_length", "angstrom",
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'RECV_NCOORDS -- MDI_Conversion_Factor failed'
+         write(iout,*)'RECV_COORDS -- MDI_Conversion_Factor failed'
          call fatal
       end if
 c
@@ -383,7 +410,7 @@ c     receive the coordinates
 c
       call MDI_Recv(coords, 3*n, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'RECV_NCOORDS -- MDI_Recv failed'
+         write(iout,*)'RECV_COORDS -- MDI_Recv failed'
          call fatal
       end if
 c
@@ -401,7 +428,220 @@ c
       deallocate( coords )
       return
       end subroutine recv_coords
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_energy  --  Respond to "<ENERGY"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_energy(comm)
+      use energi , only  : esum
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      real*8                       :: etotal, conv
+c
+c     variables for getting the kinetic energy
+c
+      real*8 eksum, temperature
+      real*8 ekin(3,3)
+c
+c     get the conversion factor from kilocalorie_per_mol to a.u.
+c
+      call MDI_Conversion_Factor("kilocalorie_per_mol",
+     &                           "atomic_unit_of_energy",
+     &                           conv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     get the kinetic energy
+c
+      call kinetic(eksum, ekin, temperature)
+c
+c     get the total energy
+c
+      etotal = esum + eksum
+c
+c     convert the energy into atomic units
+c
+      etotal = etotal * conv
+c
+c     send the charges
+c
+      call MDI_Send(etotal, 1, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_ENERGY -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_energy
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_forces  --  Respond to "<FORCES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_forces(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8, allocatable          :: mdiforces(:)
+      real*8                       :: lenconv, econv, conv
 
+      allocate( mdiforces(3*n) )
+c
+c     get the conversion factor from angstrom to a.u.
+c
+      call MDI_Conversion_Factor("angstrom",
+     &                           "atomic_unit_of_length",
+     &                           lenconv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     get the conversion factor from kilocalorie_per_mol to a.u.
+c
+      call MDI_Conversion_Factor("kilocalorie_per_mol",
+     &                           "atomic_unit_of_energy",
+     &                           econv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+      conv = econv / lenconv
+c
+c     construct the coordinates array
+c
+      do iatom=1, n
+        mdiforces( 3*(iatom-1) + 1 ) = forces_ptr(1,iatom) * conv
+        mdiforces( 3*(iatom-1) + 2 ) = forces_ptr(2,iatom) * conv
+        mdiforces( 3*(iatom-1) + 3 ) = forces_ptr(3,iatom) * conv
+      end do
+c
+c     send the coordinates
+c
+      call MDI_Send(mdiforces, 3*n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_FORCES -- MDI_Send failed'
+         call fatal
+      end if
+      deallocate( mdiforces )
+      return
+      end subroutine send_forces
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_forces  --  Respond to ">FORCES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_forces(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8, allocatable          :: mdiforces(:)
+      real*8                       :: lenconv, econv, conv
+
+      allocate( mdiforces(3*n) )
+c
+c     get the conversion factor from a.u. to angstrom
+c
+      call MDI_Conversion_Factor("atomic_unit_of_length", "angstrom",
+     &                           lenconv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     get the conversion factor from a.u. to kilocalorie_per_mol
+c
+      call MDI_Conversion_Factor("atomic_unit_of_energy",
+     &                           "kilocalorie_per_mol",
+     &                           econv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+      conv = econv / lenconv
+c
+c     receive the coordinates
+c
+      call MDI_Recv(mdiforces, 3*n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     replace the system forces with the received forces
+c
+      do iatom=1, n
+        forces_ptr(1,iatom) = mdiforces( 3*(iatom-1) + 1 ) * conv
+        forces_ptr(2,iatom) = mdiforces( 3*(iatom-1) + 2 ) * conv
+        forces_ptr(3,iatom) = mdiforces( 3*(iatom-1) + 3 ) * conv
+      end do
+      deallocate( mdiforces )
+      return
+      end subroutine recv_forces
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_ke  --  Respond to "<KE"                   ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_ke(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      real*8                       :: etotal, conv
+c
+c     variables for getting the kinetic energy
+c
+      real*8 eksum, temperature
+      real*8 ekin(3,3)
+c
+c     get the conversion factor from kilocalorie_per_mol to a.u.
+c
+      call MDI_Conversion_Factor("kilocalorie_per_mol",
+     &                           "atomic_unit_of_energy",
+     &                           conv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     get the kinetic energy
+c
+      call kinetic(eksum, ekin, temperature)
+c
+c     convert the energy into atomic units
+c
+      etotal = eksum * conv
+c
+c     send the charges
+c
+      call MDI_Send(etotal, 1, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_KE -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_ke
 c
 c     #################################################################
 c     ##                                                             ##
@@ -486,6 +726,50 @@ c
       return
       end subroutine recv_nprobes
 
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_pe  --  Respond to "<PE"                   ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_pe(comm)
+      use energi , only  : esum
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      real*8                       :: etotal, conv
+c
+c     variables for getting the kinetic energy
+c
+      real*8 eksum, temperature
+      real*8 ekin(3,3)
+c
+c     get the conversion factor from kilocalorie_per_mol to a.u.
+c
+      call MDI_Conversion_Factor("kilocalorie_per_mol",
+     &                           "atomic_unit_of_energy",
+     &                           conv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     convert the energy into atomic units
+c
+      etotal = esum * conv
+c
+c     send the charges
+c
+      call MDI_Send(etotal, 1, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_ENERGY -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_pe
 c
 c     #################################################################
 c     ##                                                             ##
