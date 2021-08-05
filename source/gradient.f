@@ -280,6 +280,7 @@ c
 c     have MDI listen at the @FORCES node
 c
       if (use_mdi) then
+         call mdi_set_forces(derivs)
          call mdi_listen("@FORCES")
       end if
       return
