@@ -41,7 +41,8 @@ c
       use efield
       use mpole
  1    use iso_c_binding
- 2    use mdi , only : MDI_Init, MDI_Accept_Communicator
+ 2    use mdi , only : MDI_Init, MDI_Accept_Communicator,
+     &    MDI_Register_node, MDI_Register_command
       implicit none
       logical found_mdi
       integer i
@@ -91,6 +92,66 @@ c
         end if
       end if
       mdi_exit = .false.
+c
+c     register all MDI nodes and commands
+c
+      call MDI_Register_node("@DEFAULT", ierr)
+      call MDI_Register_command("@DEFAULT", "EXIT", ierr)
+      call MDI_Register_command("@DEFAULT", "<CHARGES", ierr)
+      call MDI_Register_command("@DEFAULT", "<COORDS", ierr)
+      call MDI_Register_command("@DEFAULT", ">COORDS", ierr)
+      call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
+      call MDI_Register_command("@DEFAULT", "<POLES", ierr)
+      call MDI_Register_command("@DEFAULT", "<IPOLES", ierr)
+      call MDI_Register_command("@DEFAULT", "<FIELD", ierr)
+      call MDI_Register_command("@DEFAULT", "<DFIELD", ierr)
+      call MDI_Register_command("@DEFAULT", "<UFIELD", ierr)
+      call MDI_Register_command("@DEFAULT", "<RESIDUES", ierr)
+      call MDI_Register_command("@DEFAULT", "<MOLECULES", ierr)
+      call MDI_Register_command("@DEFAULT", ">NPROBES", ierr)
+      call MDI_Register_command("@DEFAULT", ">PROBES", ierr)
+      call MDI_Register_command("@DEFAULT", "@INIT_MD", ierr)
+
+      call MDI_Register_node("@INIT_MD", ierr)
+      call MDI_Register_command("@INIT_MD", "EXIT", ierr)
+      call MDI_Register_command("@INIT_MD", "<CHARGES", ierr)
+      call MDI_Register_command("@INIT_MD", "<COORDS", ierr)
+      call MDI_Register_command("@INIT_MD", ">COORDS", ierr)
+      call MDI_Register_command("@INIT_MD", "<NATOMS", ierr)
+      call MDI_Register_command("@INIT_MD", "<POLES", ierr)
+      call MDI_Register_command("@INIT_MD", "<IPOLES", ierr)
+      call MDI_Register_command("@INIT_MD", "<FIELD", ierr)
+      call MDI_Register_command("@INIT_MD", "<DFIELD", ierr)
+      call MDI_Register_command("@INIT_MD", "<UFIELD", ierr)
+      call MDI_Register_command("@INIT_MD", "<RESIDUES", ierr)
+      call MDI_Register_command("@INIT_MD", "<MOLECULES", ierr)
+      call MDI_Register_command("@INIT_MD", ">NPROBES", ierr)
+      call MDI_Register_command("@INIT_MD", ">PROBES", ierr)
+      call MDI_Register_command("@INIT_MD", "@", ierr)
+      call MDI_Register_command("@INIT_MD", "@FORCES", ierr)
+
+      call MDI_Register_node("@FORCES", ierr)
+      call MDI_Register_command("@FORCES", "EXIT", ierr)
+      call MDI_Register_command("@FORCES", "<CHARGES", ierr)
+      call MDI_Register_command("@FORCES", "<COORDS", ierr)
+      call MDI_Register_command("@FORCES", ">COORDS", ierr)
+      call MDI_Register_command("@FORCES", "<ENERGY", ierr)
+      call MDI_Register_command("@FORCES", "<FORCES", ierr)
+      call MDI_Register_command("@FORCES", ">FORCES", ierr)
+      call MDI_Register_command("@FORCES", "<KE", ierr)
+      call MDI_Register_command("@FORCES", "<NATOMS", ierr)
+      call MDI_Register_command("@FORCES", "<PE", ierr)
+      call MDI_Register_command("@FORCES", "<POLES", ierr)
+      call MDI_Register_command("@FORCES", "<IPOLES", ierr)
+      call MDI_Register_command("@FORCES", "<FIELD", ierr)
+      call MDI_Register_command("@FORCES", "<DFIELD", ierr)
+      call MDI_Register_command("@FORCES", "<UFIELD", ierr)
+      call MDI_Register_command("@FORCES", "<RESIDUES", ierr)
+      call MDI_Register_command("@FORCES", "<MOLECULES", ierr)
+      call MDI_Register_command("@FORCES", ">NPROBES", ierr)
+      call MDI_Register_command("@FORCES", ">PROBES", ierr)
+      call MDI_Register_command("@FORCES", "@", ierr)
+      call MDI_Register_command("@FORCES", "@FORCES", ierr)
 c
 c     zero nprobes
 c
@@ -282,8 +343,6 @@ c
          target_node = "@INIT_MD"
       case( "@FORCES" )
          target_node = "@FORCES"
-      case( "@INDUCE" )
-         target_node = "@INDUCE"
       case default
         write(iout,*)'EXECUTE_COMMAND -- Command name not recognized: ',
      &                command
