@@ -46,7 +46,7 @@ c
       implicit none
       logical found_mdi
       integer i
-      integer mpi_comm, ierr
+      integer ierr
       character*240 mdi_options
       character*240 string
       procedure(execute_command), pointer :: generic_command => null()
@@ -71,8 +71,7 @@ c     initialize the MDI Library
 c
       if ( found_mdi ) then
         use_mdi = .true.
-        mpi_comm = 0
-        call MDI_Init(mdi_options, mpi_comm, ierr)
+        call MDI_Init(mdi_options, ierr)
         if ( ierr .ne. 0 ) then
            write(iout,*)'INIT_MDI -- Could not initalize MDI'
            call fatal
@@ -80,8 +79,8 @@ c
 c
 c     set the execute_command callback function
 c
-        CALL MDI_Set_Execute_Command_Func(generic_command, class_obj,
-     &                                  ierr)
+c        CALL MDI_Set_Execute_Command_Func(generic_command, class_obj,
+c     &                                  ierr)
 c
 c     accept an MDI communicator
 c
@@ -110,6 +109,7 @@ c
       call MDI_Register_command("@DEFAULT", "<MOLECULES", ierr)
       call MDI_Register_command("@DEFAULT", ">NPROBES", ierr)
       call MDI_Register_command("@DEFAULT", ">PROBES", ierr)
+      call MDI_Register_command("@DEFAULT", "<@", ierr)
       call MDI_Register_command("@DEFAULT", "@INIT_MD", ierr)
 
       call MDI_Register_node("@INIT_MD", ierr)
@@ -127,6 +127,7 @@ c
       call MDI_Register_command("@INIT_MD", "<MOLECULES", ierr)
       call MDI_Register_command("@INIT_MD", ">NPROBES", ierr)
       call MDI_Register_command("@INIT_MD", ">PROBES", ierr)
+      call MDI_Register_command("@INIT_MD", "<@", ierr)
       call MDI_Register_command("@INIT_MD", "@", ierr)
       call MDI_Register_command("@INIT_MD", "@FORCES", ierr)
 
@@ -150,6 +151,7 @@ c
       call MDI_Register_command("@FORCES", "<MOLECULES", ierr)
       call MDI_Register_command("@FORCES", ">NPROBES", ierr)
       call MDI_Register_command("@FORCES", ">PROBES", ierr)
+      call MDI_Register_command("@FORCES", "<@", ierr)
       call MDI_Register_command("@FORCES", "@", ierr)
       call MDI_Register_command("@FORCES", "@FORCES", ierr)
 c
@@ -290,12 +292,34 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine execute_command(command, comm, ierr)
+ 1    use mdi , only : MDI_Send, MDI_CHAR, MDI_NAME_LENGTH,
+     & MDI_Check_command_exists, MDI_COMM_NULL
       use iounit
       implicit none
       character(len=*), intent(in) :: command
       integer, intent(in)          :: comm
-      integer, intent(in)          :: ierr
+      integer, intent(out)         :: ierr
+      integer                      :: cflag
+      ierr = 0
+c
+c     confirm that this command is supported at this node
+c
+      call MDI_Check_command_exists(current_node, command,
+     &                              MDI_COMM_NULL, cflag, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)
+     &      'EXECUTE_COMMAND -- MDI_Check_command_exists failed'
+         call fatal
+      end if
+      if ( cflag .ne. 1 ) then
+         write(iout,*)'EXECUTE_COMMAND -- Unsupported command: ',
+     &                command
+         call fatal
+      end if
 
+c
+c     respond to the command
+c
       select case( TRIM(command) )
       case( "EXIT" )
         call exit_mdi
@@ -322,21 +346,28 @@ c
       case( "<POLES" )
          call send_poles(comm)
       case( "<IPOLES" )
-            call send_pole_indices(comm)
+         call send_pole_indices(comm)
       case( "<FIELD" )
          call send_field(comm)
       case( "<DFIELD" )
-            call send_dfield_components(comm)
+         call send_dfield_components(comm)
       case( "<UFIELD" )
-            call send_ufield_components(comm)
+         call send_ufield_components(comm)
       case( "<RESIDUES" )
-            call send_residues(comm)
+         call send_residues(comm)
       case( "<MOLECULES" )
-            call send_molecules(comm)
+         call send_molecules(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
-            call recv_probes(comm)
+         call recv_probes(comm)
+      case( "<@" )
+         call MDI_Send(current_node, MDI_NAME_LENGTH, MDI_CHAR, comm,
+     &                 ierr)
+         if ( ierr .ne. 0 ) then
+            write(iout,*)'EXECUTE_COMMAND -- MDI_Send failed'
+            call fatal
+         end if
       case( "@" )
          target_node = "@"
       case( "@INIT_MD" )
