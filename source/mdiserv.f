@@ -96,9 +96,12 @@ c     register all MDI nodes and commands
 c
       call MDI_Register_node("@DEFAULT", ierr)
       call MDI_Register_command("@DEFAULT", "EXIT", ierr)
+      call MDI_Register_command("@DEFAULT", "<CELL", ierr)
+      call MDI_Register_command("@DEFAULT", "<CELL_DISPL", ierr)
       call MDI_Register_command("@DEFAULT", "<CHARGES", ierr)
       call MDI_Register_command("@DEFAULT", "<COORDS", ierr)
       call MDI_Register_command("@DEFAULT", ">COORDS", ierr)
+      call MDI_Register_command("@DEFAULT", "<DIMENSIONS", ierr)
       call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
       call MDI_Register_command("@DEFAULT", "<POLES", ierr)
       call MDI_Register_command("@DEFAULT", "<IPOLES", ierr)
@@ -114,9 +117,12 @@ c
 
       call MDI_Register_node("@INIT_MD", ierr)
       call MDI_Register_command("@INIT_MD", "EXIT", ierr)
+      call MDI_Register_command("@INIT_MD", "<CELL", ierr)
+      call MDI_Register_command("@INIT_MD", "<CELL_DISPL", ierr)
       call MDI_Register_command("@INIT_MD", "<CHARGES", ierr)
       call MDI_Register_command("@INIT_MD", "<COORDS", ierr)
       call MDI_Register_command("@INIT_MD", ">COORDS", ierr)
+      call MDI_Register_command("@INIT_MD", "<DIMENSIONS", ierr)
       call MDI_Register_command("@INIT_MD", "<NATOMS", ierr)
       call MDI_Register_command("@INIT_MD", "<POLES", ierr)
       call MDI_Register_command("@INIT_MD", "<IPOLES", ierr)
@@ -133,9 +139,12 @@ c
 
       call MDI_Register_node("@FORCES", ierr)
       call MDI_Register_command("@FORCES", "EXIT", ierr)
+      call MDI_Register_command("@FORCES", "<CELL", ierr)
+      call MDI_Register_command("@FORCES", "<CELL_DISPL", ierr)
       call MDI_Register_command("@FORCES", "<CHARGES", ierr)
       call MDI_Register_command("@FORCES", "<COORDS", ierr)
       call MDI_Register_command("@FORCES", ">COORDS", ierr)
+      call MDI_Register_command("@FORCES", "<DIMENSIONS", ierr)
       call MDI_Register_command("@FORCES", "<ENERGY", ierr)
       call MDI_Register_command("@FORCES", "<FORCES", ierr)
       call MDI_Register_command("@FORCES", ">FORCES", ierr)
@@ -323,12 +332,18 @@ c
       select case( TRIM(command) )
       case( "EXIT" )
         call exit_mdi
+      case( "<CELL" )
+         call send_cell(comm)
+      case( "<CELL_DISPL" )
+         call send_celldispl(comm)
       case( "<CHARGES" )
          call send_charges(comm)
       case( "<COORDS" )
          call send_coords(comm)
       case( ">COORDS" )
          call recv_coords(comm)
+      case( "<DIMENSIONS" )
+         call send_dimensions(comm)
       case( "<ENERGY" )
          call send_energy(comm)
       case( "<FORCES" )
@@ -381,6 +396,74 @@ c
       end select
       return
       end subroutine execute_command
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_celldispl  --  Respond to "<CELL_DISPL"    ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_celldispl(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      real*8                       :: cell_displ(3)
+
+c
+c     construct the cell_displ array
+c
+      cell_displ = 0.0
+c
+c     send the cell_displ
+c
+      call MDI_Send(cell_displ, 3, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CELLDISPL -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_celldispl
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_cell  --  Respond to "<CELL"               ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_cell(comm)
+      use iounit , only : iout
+      use boxes , only : lvec
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      real*8                       :: conv, cell(9)
+c
+c     get the conversion factor from angstrom to a.u.
+c
+      call MDI_Conversion_Factor("angstrom", "atomic_unit_of_length",
+     &                           conv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CELL -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     construct the cell array
+c
+      cell = RESHAPE( lvec, SHAPE(cell) )
+      cell = cell * conv
+c
+c     send the cell vector
+c
+      call MDI_Send(cell, 9, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_CELL -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_cell
 c
 c     #################################################################
 c     ##                                                             ##
@@ -518,6 +601,40 @@ c
       deallocate( coords )
       return
       end subroutine recv_coords
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_dimensions  --  Respond to "<DIMENSIONS"   ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_dimensions(comm)
+      use boxes , only : orthogonal, monoclinic, triclinic, octahedron
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      integer                      :: dimensions(3)
+
+c
+c     construct the dimensions array
+c
+      dimensions = 1
+      if ( orthogonal .or. monoclinic .or.
+     &     triclinic .or. octahedron ) THEN
+         dimensions = 2
+      END IF
+c
+c     send the cell_displ
+c
+      call MDI_Send(dimensions, 3, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_DIMENSIONS -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_dimensions
 c
 c     #################################################################
 c     ##                                                             ##
