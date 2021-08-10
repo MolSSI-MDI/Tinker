@@ -106,6 +106,7 @@ c
       call MDI_Register_command("@DEFAULT", "<MASSES", ierr)
       call MDI_Register_command("@DEFAULT", ">MASSES", ierr)
       call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
+      call MDI_Register_command("@DEFAULT", "<TOTCHARGE", ierr)
       call MDI_Register_command("@DEFAULT", "<POLES", ierr)
       call MDI_Register_command("@DEFAULT", "<IPOLES", ierr)
       call MDI_Register_command("@DEFAULT", "<FIELD", ierr)
@@ -130,6 +131,7 @@ c
       call MDI_Register_command("@INIT_MD", "<MASSES", ierr)
       call MDI_Register_command("@INIT_MD", ">MASSES", ierr)
       call MDI_Register_command("@INIT_MD", "<NATOMS", ierr)
+      call MDI_Register_command("@INIT_MD", "<TOTCHARGE", ierr)
       call MDI_Register_command("@INIT_MD", "<POLES", ierr)
       call MDI_Register_command("@INIT_MD", "<IPOLES", ierr)
       call MDI_Register_command("@INIT_MD", "<FIELD", ierr)
@@ -161,6 +163,7 @@ c
       call MDI_Register_command("@FORCES", ">MASSES", ierr)
       call MDI_Register_command("@FORCES", "<NATOMS", ierr)
       call MDI_Register_command("@FORCES", "<PE", ierr)
+      call MDI_Register_command("@FORCES", "<TOTCHARGE", ierr)
       call MDI_Register_command("@FORCES", "<POLES", ierr)
       call MDI_Register_command("@FORCES", "<IPOLES", ierr)
       call MDI_Register_command("@FORCES", "<FIELD", ierr)
@@ -376,6 +379,8 @@ c
          call send_npoles(comm)
       case( "<PE" )
          call send_pe(comm)
+      case( "<TOTCHARGE" )
+         call send_totcharge(comm)
       case( "<POLES" )
          call send_poles(comm)
       case( "<IPOLES" )
@@ -1160,6 +1165,40 @@ c
       end if
       return
       end subroutine send_pe
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_totcharge  --  Respond to "<TOTCHARGE"     ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_totcharge(comm)
+      use atoms , only  : n
+      use charge , only  : nion, pchg
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8                       :: totcharge
+
+c
+c     construct the charges array
+c
+      totcharge = 0.0
+      do iatom=1, nion
+        totcharge = totcharge + pchg(iatom)
+      end do
+c
+c     send the charges
+c
+      call MDI_Send(totcharge, 1, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_TOTCHARGE -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_totcharge
 c
 c     #################################################################
 c     ##                                                             ##
