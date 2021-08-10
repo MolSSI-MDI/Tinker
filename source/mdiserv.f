@@ -102,6 +102,9 @@ c
       call MDI_Register_command("@DEFAULT", "<COORDS", ierr)
       call MDI_Register_command("@DEFAULT", ">COORDS", ierr)
       call MDI_Register_command("@DEFAULT", "<DIMENSIONS", ierr)
+      call MDI_Register_command("@DEFAULT", "<ELEMENTS", ierr)
+      call MDI_Register_command("@DEFAULT", "<MASSES", ierr)
+      call MDI_Register_command("@DEFAULT", ">MASSES", ierr)
       call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
       call MDI_Register_command("@DEFAULT", "<POLES", ierr)
       call MDI_Register_command("@DEFAULT", "<IPOLES", ierr)
@@ -123,6 +126,9 @@ c
       call MDI_Register_command("@INIT_MD", "<COORDS", ierr)
       call MDI_Register_command("@INIT_MD", ">COORDS", ierr)
       call MDI_Register_command("@INIT_MD", "<DIMENSIONS", ierr)
+      call MDI_Register_command("@INIT_MD", "<ELEMENTS", ierr)
+      call MDI_Register_command("@INIT_MD", "<MASSES", ierr)
+      call MDI_Register_command("@INIT_MD", ">MASSES", ierr)
       call MDI_Register_command("@INIT_MD", "<NATOMS", ierr)
       call MDI_Register_command("@INIT_MD", "<POLES", ierr)
       call MDI_Register_command("@INIT_MD", "<IPOLES", ierr)
@@ -145,10 +151,14 @@ c
       call MDI_Register_command("@FORCES", "<COORDS", ierr)
       call MDI_Register_command("@FORCES", ">COORDS", ierr)
       call MDI_Register_command("@FORCES", "<DIMENSIONS", ierr)
+      call MDI_Register_command("@FORCES", "<ELEMENTS", ierr)
       call MDI_Register_command("@FORCES", "<ENERGY", ierr)
       call MDI_Register_command("@FORCES", "<FORCES", ierr)
       call MDI_Register_command("@FORCES", ">FORCES", ierr)
+      call MDI_Register_command("@FORCES", ">+FORCES", ierr)
       call MDI_Register_command("@FORCES", "<KE", ierr)
+      call MDI_Register_command("@FORCES", "<MASSES", ierr)
+      call MDI_Register_command("@FORCES", ">MASSES", ierr)
       call MDI_Register_command("@FORCES", "<NATOMS", ierr)
       call MDI_Register_command("@FORCES", "<PE", ierr)
       call MDI_Register_command("@FORCES", "<POLES", ierr)
@@ -344,14 +354,22 @@ c
          call recv_coords(comm)
       case( "<DIMENSIONS" )
          call send_dimensions(comm)
+      case( "<ELEMENTS" )
+         call send_elements(comm)
       case( "<ENERGY" )
          call send_energy(comm)
       case( "<FORCES" )
          call send_forces(comm)
       case( ">FORCES" )
          call recv_forces(comm)
+      case( ">+FORCES" )
+         call add_forces(comm)
       case( "<KE" )
          call send_ke(comm)
+      case( "<MASSES" )
+         call send_masses(comm)
+      case( ">MASSES" )
+         call recv_masses(comm)
       case( "<NATOMS" )
          call send_natoms(comm)
       case( "<NPOLES" )
@@ -492,7 +510,7 @@ c
          charges(iatom) = 0.0
       end do
       do iatom=1, nion
-        charges(iion(iatom)) = pchg(iatom)
+        charges(iion(iatom)) = charges(iion(iatom)) + pchg(iatom)
       end do
 c
 c     send the charges
@@ -638,6 +656,41 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
+c     ##  subroutine send_elements  --  Respond to "<ELEMENTS"       ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_elements(comm)
+      use atoms , only  : n
+      use atomid , only  : atomic
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      integer, allocatable          :: mdielem(:)
+
+      allocate( mdielem(n) )
+c
+c     construct the elements array
+c
+      do iatom=1, n
+         mdielem(iatom) = atomic(iatom)
+      end do
+c
+c     send the elements
+c
+      call MDI_Send(mdielem, n, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_ELEMENTS -- MDI_Send failed'
+         call fatal
+      end if
+      deallocate( mdielem )
+      return
+      end subroutine send_elements
+c
+c     #################################################################
+c     ##                                                             ##
 c     ##  subroutine send_energy  --  Respond to "<ENERGY"           ##
 c     ##                                                             ##
 c     #################################################################
@@ -662,7 +715,7 @@ c
      &                           "atomic_unit_of_energy",
      &                           conv, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         write(iout,*)'SEND_ENERGY -- MDI_Conversion_Factor failed'
          call fatal
       end if
 c
@@ -712,7 +765,7 @@ c
      &                           "atomic_unit_of_length",
      &                           lenconv, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         write(iout,*)'SEND_FORCES -- MDI_Conversion_Factor failed'
          call fatal
       end if
 c
@@ -722,7 +775,7 @@ c
      &                           "atomic_unit_of_energy",
      &                           econv, ierr)
       if ( ierr .ne. 0 ) then
-         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         write(iout,*)'SEND_FORCES -- MDI_Conversion_Factor failed'
          call fatal
       end if
       conv = econv / lenconv
@@ -805,6 +858,66 @@ c
 c
 c     #################################################################
 c     ##                                                             ##
+c     ##  subroutine add_forces  --  Respond to ">+FORCES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine add_forces(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8, allocatable          :: mdiforces(:)
+      real*8                       :: lenconv, econv, conv
+
+      allocate( mdiforces(3*n) )
+c
+c     get the conversion factor from a.u. to angstrom
+c
+      call MDI_Conversion_Factor("atomic_unit_of_length", "angstrom",
+     &                           lenconv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+c
+c     get the conversion factor from a.u. to kilocalorie_per_mol
+c
+      call MDI_Conversion_Factor("atomic_unit_of_energy",
+     &                           "kilocalorie_per_mol",
+     &                           econv, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Conversion_Factor failed'
+         call fatal
+      end if
+      conv = econv / lenconv
+c
+c     receive the coordinates
+c
+      call MDI_Recv(mdiforces, 3*n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_FORCES -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     replace the system forces with the received forces
+c
+      do iatom=1, n
+         forces_ptr(1,iatom) = forces_ptr(1,iatom) +
+     &        mdiforces( 3*(iatom-1) + 1 ) * conv
+         forces_ptr(2,iatom) = forces_ptr(2,iatom) +
+     &        mdiforces( 3*(iatom-1) + 2 ) * conv
+         forces_ptr(3,iatom) = forces_ptr(3,iatom) +
+     &        mdiforces( 3*(iatom-1) + 3 ) * conv
+      end do
+      deallocate( mdiforces )
+      return
+      end subroutine add_forces
+c
+c     #################################################################
+c     ##                                                             ##
 c     ##  subroutine send_ke  --  Respond to "<KE"                   ##
 c     ##                                                             ##
 c     #################################################################
@@ -849,6 +962,76 @@ c
       end if
       return
       end subroutine send_ke
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_masses  --  Respond to "<MASSES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_masses(comm)
+      use atoms , only  : n
+      use atomid , only  : mass
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8, allocatable          :: mdimass(:)
+
+      allocate( mdimass(n) )
+c
+c     construct the mass array
+c
+      do iatom=1, n
+         mdimass(iatom) = mass(iatom)
+      end do
+c
+c     send the mass
+c
+      call MDI_Send(mdimass, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_MASSES -- MDI_Send failed'
+         call fatal
+      end if
+      deallocate( mdimass )
+      return
+      end subroutine send_masses
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_masses  --  Respond to ">MASSES"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_masses(comm)
+      use atoms , only  : n
+      use atomid , only  : mass
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Recv
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iatom
+      real*8, allocatable          :: mdimass(:)
+
+      allocate( mdimass(n) )
+c
+c     receive the mass
+c
+      call MDI_Recv(mdimass, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_MASSES -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     construct the mass array
+c
+      do iatom=1, n
+         mass(iatom) = mdimass(iatom)
+      end do
+      deallocate( mdimass )
+      return
+      end subroutine recv_masses
 c
 c     #################################################################
 c     ##                                                             ##
