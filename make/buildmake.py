@@ -94,6 +94,11 @@ ifeq ($(f77__), ifort)
   use_ifort__ := true
   found__ := true
 endif
+f77__ := $(shell echo $(F77) | cut -c 1-3)
+ifeq ($(f77__), ftn)
+  use_gfortran__ := true
+  found__ := true
+endif
 ifneq ($(found__), true)
 $(error Unknown fortran compiler -- $(F77); Please help with us)
 endif
@@ -336,7 +341,7 @@ def all_install_clean_listing():
 
     print('mdi:')
     print('\tmkdir -p $(TINKERDIR)/mdi/build')
-    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dmpi=OFF -Dplugins=OFF -Dlibtype=STATIC; $(MAKE)')
+    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dplugins=OFF -Dlibtype=STATIC; $(MAKE)')
     print('')
 
     print('install: $(RENAME)')

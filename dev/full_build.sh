@@ -24,10 +24,17 @@ cd ..
 # Copy the MDI library
 cp -r ../../mdi .
 
-# Compile Tinker
+# Copy buildmake.py
 mkdir source
 cd source
 cp ../../../make/buildmake.py .
+
+# If F77 has been set, modify buildmake.py to use the correct F77
+[[ ! -z "${FC}" ]] && sed -i "s/F77 := gfortran/F77 := ${FC}/g" buildmake.py
+
+# Create a build file for Tinker
 ./buildmake.py ../../../source/*.f > Makefile
+
+# Compile Tinker
 cp ../../../source/* .
 make -j 4
