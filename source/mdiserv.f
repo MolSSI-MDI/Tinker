@@ -198,10 +198,12 @@ c
 
       subroutine exit_mdi
       use efield
+      use_mdi = .false.
       mdi_exit = .true.
       if (allocated(fielde)) deallocate (fielde)
       if (allocated(dfield_pair)) deallocate (dfield_pair)
       if (allocated(ufield_pair)) deallocate (ufield_pair)
+      nprobes = 0
       return
       end subroutine exit_mdi
 
