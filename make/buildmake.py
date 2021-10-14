@@ -99,6 +99,11 @@ ifeq ($(f77__), ftn)
   use_gfortran__ := true
   found__ := true
 endif
+f77__ := $(shell echo $(F77) | cut -c 1-7)
+ifeq ($(f77__), mpifort)
+  use_gfortran__ := true
+  found__ := true
+endif
 ifneq ($(found__), true)
 $(error Unknown fortran compiler -- $(F77); Please help with us)
 endif
