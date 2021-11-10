@@ -58,6 +58,7 @@ FFTW_LIBS := -lfftw3_threads -lfftw3
 MDI_INCDIR := -I$(TINKERDIR)/mdi/build/MDI_Library
 MDI_LIBDIR := -L$(TINKERDIR)/mdi/build/MDI_Library
 MDI_LIBS := -lmdi
+MDI_MPI := OFF
 
 APBSDIR := $(TINKERDIR)/apbs
 APBS_INCDIR := -I$(APBSDIR)/include
@@ -98,11 +99,13 @@ f77__ := $(shell echo $(F77) | cut -c 1-3)
 ifeq ($(f77__), ftn)
   use_gfortran__ := true
   found__ := true
+  MDI_MPI := ON
 endif
 f77__ := $(shell echo $(F77) | cut -c 1-7)
 ifeq ($(f77__), mpifort)
   use_gfortran__ := true
   found__ := true
+  MDI_MPI := ON
 endif
 ifneq ($(found__), true)
 $(error Unknown fortran compiler -- $(F77); Please help with us)
@@ -346,7 +349,7 @@ def all_install_clean_listing():
 
     print('mdi:')
     print('\tmkdir -p $(TINKERDIR)/mdi/build')
-    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dplugins=OFF -Dlibtype=STATIC; $(MAKE)')
+    print('\tcd $(TINKERDIR)/mdi/build; cmake $(TINKERDIR)/mdi -Dlanguage=Fortran -Dplugins=OFF -Dlibtype=STATIC -Dmpi=$(MDI_MPI); $(MAKE)')
     print('')
 
     print('install: $(RENAME)')
