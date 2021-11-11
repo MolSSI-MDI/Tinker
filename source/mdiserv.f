@@ -132,6 +132,8 @@ c
         if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) THEN
            call MDI_Register_command("@DEFAULT", "@", ierr)
            call MDI_Register_command("@DEFAULT", "<ENERGY", ierr)
+           call MDI_Register_command("@DEFAULT", "<PE", ierr)
+           call MDI_Register_command("@DEFAULT", "<FORCES", ierr)
         end if
 
         call MDI_Register_node("@INIT_MD", ierr)
@@ -752,7 +754,7 @@ c
       real*8 eksum, temperature
       real*8 ekin(3,3)
 c
-c     get the conversion factor from kilocalorie_per_mol to a.u.
+c     check if this node needs to temporarily exit
 c
       if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) then
          if ( analyze_need_update ) then
@@ -815,6 +817,20 @@ c
       real*8, allocatable          :: mdiforces(:)
       real*8                       :: lenconv, econv, conv
 
+c
+c     check if this node needs to temporarily exit
+c
+      if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) then
+         if ( analyze_need_update ) then
+            mdi_cycle_analyze = .true.
+            current_command = '<FORCES'
+            target_node = '@DEFAULT'
+            return
+         end if
+      end if
+c
+c     allocate an array for the forces
+c
       allocate( mdiforces(3*n) )
 c
 c     get the conversion factor from angstrom to a.u.
@@ -1194,6 +1210,17 @@ c     variables for getting the kinetic energy
 c
       real*8 eksum, temperature
       real*8 ekin(3,3)
+c
+c     check if this node needs to temporarily exit
+c
+      if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) then
+         if ( analyze_need_update ) then
+            mdi_cycle_analyze = .true.
+            current_command = '<PE'
+            target_node = '@DEFAULT'
+            return
+         end if
+      end if
 c
 c     get the conversion factor from kilocalorie_per_mol to a.u.
 c
