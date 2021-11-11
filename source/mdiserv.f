@@ -17,15 +17,24 @@ c     option and if it is found, initializes the MDI Library
 c
 c
       module mdiserv
- 1    use mdi , only : MDI_NAME_LENGTH
+ 1    use mdi , only : MDI_NAME_LENGTH, MDI_COMMAND_LENGTH
       integer :: mdi_comm = 0
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
       logical :: mdi_ignore_nodes = .false.
       logical :: forces_need_update = .true.
+      logical :: analyze_need_update = .false.
+      logical :: mdi_cycle_analyze = .false.
       character(len=MDI_NAME_LENGTH) :: target_node = "@DEFAULT"
       character(len=MDI_NAME_LENGTH) :: current_node = " "
+      character(len=MDI_NAME_LENGTH) :: mdi_initial_caller = " "
       real*8, pointer, dimension (:,:)   :: forces_ptr
+c
+c     Only used by analyze.x
+c     If it is necessary to exit the node before responding to a command,
+c       this variable will contain the current command
+c
+      character(len=MDI_COMMAND_LENGTH) :: current_command = " "
       save
       contains
 c
@@ -117,6 +126,13 @@ c
         call MDI_Register_command("@DEFAULT", ">PROBES", ierr)
         call MDI_Register_command("@DEFAULT", "<@", ierr)
         call MDI_Register_command("@DEFAULT", "@INIT_MD", ierr)
+c
+c       Should only be supported if this was called from analyze.x
+c
+        if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) THEN
+           call MDI_Register_command("@DEFAULT", "@", ierr)
+           call MDI_Register_command("@DEFAULT", "<ENERGY", ierr)
+        end if
 
         call MDI_Register_node("@INIT_MD", ierr)
         call MDI_Register_command("@INIT_MD", "EXIT", ierr)
@@ -266,6 +282,21 @@ c
          end if
       end if
       WRITE(6,*)'MDI listening at node: ',node_name
+c
+c     If using the analyze code, every time mdi_listen is called,
+c     the energy, forces, etc. have been updated.
+c
+      if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) then
+         analyze_need_update = .false.
+         if ( current_command .ne. " " ) then
+c
+c           respond to this command
+c
+            call execute_command(current_command, mdi_comm, ierr)
+            mdi_cycle_analyze = .false.
+            current_command = " "
+         end if
+      end if
 c
 c     listen for commands from the driver
 c
@@ -627,6 +658,7 @@ c
 c     the forces are now out-of-date
 c
       forces_need_update = .true.
+      analyze_need_update = .true.
       deallocate( coords )
       return
       end subroutine recv_coords
@@ -722,6 +754,17 @@ c
 c
 c     get the conversion factor from kilocalorie_per_mol to a.u.
 c
+      if ( TRIM(mdi_initial_caller) .eq. 'analyze' ) then
+         if ( analyze_need_update ) then
+            mdi_cycle_analyze = .true.
+            current_command = '<ENERGY'
+            target_node = '@DEFAULT'
+            return
+         end if
+      end if
+c
+c     get the conversion factor from kilocalorie_per_mol to a.u.
+c
       call MDI_Conversion_Factor("kilocalorie_per_mol",
      &                           "atomic_unit_of_energy",
      &                           conv, ierr)
@@ -731,8 +774,12 @@ c
       end if
 c
 c     get the kinetic energy
+c     there is no kinetic energy when using analyze.x
 c
-      call kinetic(eksum, ekin, temperature)
+      eksum = 0.0
+      if ( TRIM(mdi_initial_caller) .ne. 'analyze' ) THEN
+         call kinetic(eksum, ekin, temperature)
+      end if
 c
 c     get the total energy
 c
