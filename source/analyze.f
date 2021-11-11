@@ -25,6 +25,7 @@ c
       use files
       use inform
       use iounit
+      use mdiserv
       use output
       implicit none
       integer i,j,ixyz
@@ -47,6 +48,10 @@ c
       character*240 string
       character*240 xyzfile
 c
+c
+c     inform MDI which program is being executed
+c
+      mdi_initial_caller = 'analyze'
 c
 c     set up the structure and mechanics calculation
 c
@@ -254,6 +259,18 @@ c
             debug = .false.
             call viriyze
             if (dodetail)  debug = .true.
+         end if
+c
+c     have MDI listen at the @DEFAULT node
+c
+         if (use_mdi) then
+            call mdi_listen("@DEFAULT")
+            nold = n
+            if (mdi_cycle_analyze) then
+               abort = .false.
+               frame = frame - 1
+               cycle
+            end if
          end if
 c
 c     save output files with forces or induced dipoles
