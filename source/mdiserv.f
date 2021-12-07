@@ -113,6 +113,8 @@ c
         call MDI_Register_command("@DEFAULT", "<MASSES", ierr)
         call MDI_Register_command("@DEFAULT", ">MASSES", ierr)
         call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
+        call MDI_Register_command("@DEFAULT", ">POLARIZE", ierr)
+        call MDI_Register_command("@DEFAULT", "<POLEDIMS", ierr)
         call MDI_Register_command("@DEFAULT", "<TOTCHARGE", ierr)
         call MDI_Register_command("@DEFAULT", "<NPOLES", ierr)
         call MDI_Register_command("@DEFAULT", "<POLES", ierr)
@@ -122,6 +124,8 @@ c
         call MDI_Register_command("@DEFAULT", "<UFIELD", ierr)
         call MDI_Register_command("@DEFAULT", "<RESIDUES", ierr)
         call MDI_Register_command("@DEFAULT", "<MOLECULES", ierr)
+        call MDI_Register_command("@DEFAULT", "<MULTIPOLES", ierr)
+        call MDI_Register_command("@DEFAULT", ">MULTIPOLES", ierr)
         call MDI_Register_command("@DEFAULT", ">NPROBES", ierr)
         call MDI_Register_command("@DEFAULT", ">PROBES", ierr)
         call MDI_Register_command("@DEFAULT", "<@", ierr)
@@ -150,6 +154,8 @@ c
         call MDI_Register_command("@INIT_MD", "<NATOMS", ierr)
         call MDI_Register_command("@INIT_MD", "<TOTCHARGE", ierr)
         call MDI_Register_command("@INIT_MD", "<NPOLES", ierr)
+        call MDI_Register_command("@INIT_MD", ">POLARIZE", ierr)
+        call MDI_Register_command("@INIT_MD", "<POLEDIMS", ierr)
         call MDI_Register_command("@INIT_MD", "<POLES", ierr)
         call MDI_Register_command("@INIT_MD", "<IPOLES", ierr)
         call MDI_Register_command("@INIT_MD", "<FIELD", ierr)
@@ -157,6 +163,8 @@ c
         call MDI_Register_command("@INIT_MD", "<UFIELD", ierr)
         call MDI_Register_command("@INIT_MD", "<RESIDUES", ierr)
         call MDI_Register_command("@INIT_MD", "<MOLECULES", ierr)
+        call MDI_Register_command("@INIT_MD", "<MULTIPOLES", ierr)
+        call MDI_Register_command("@INIT_MD", ">MULTIPOLES", ierr)
         call MDI_Register_command("@INIT_MD", ">NPROBES", ierr)
         call MDI_Register_command("@INIT_MD", ">PROBES", ierr)
         call MDI_Register_command("@INIT_MD", "<@", ierr)
@@ -183,6 +191,8 @@ c
         call MDI_Register_command("@FORCES", "<PE", ierr)
         call MDI_Register_command("@FORCES", "<TOTCHARGE", ierr)
         call MDI_Register_command("@FORCES", "<NPOLES", ierr)
+        call MDI_Register_command("@FORCES", ">POLARIZE", ierr)
+        call MDI_Register_command("@FORCES", "<POLEDIMS", ierr)
         call MDI_Register_command("@FORCES", "<POLES", ierr)
         call MDI_Register_command("@FORCES", "<IPOLES", ierr)
         call MDI_Register_command("@FORCES", "<FIELD", ierr)
@@ -190,6 +200,8 @@ c
         call MDI_Register_command("@FORCES", "<UFIELD", ierr)
         call MDI_Register_command("@FORCES", "<RESIDUES", ierr)
         call MDI_Register_command("@FORCES", "<MOLECULES", ierr)
+        call MDI_Register_command("@FORCES", "<MULTIPOLES", ierr)
+        call MDI_Register_command("@FORCES", ">MULTIPOLES", ierr)
         call MDI_Register_command("@FORCES", ">NPROBES", ierr)
         call MDI_Register_command("@FORCES", ">PROBES", ierr)
         call MDI_Register_command("@FORCES", "<@", ierr)
@@ -418,6 +430,10 @@ c
          call send_npoles(comm)
       case( "<PE" )
          call send_pe(comm)
+      case( ">POLARIZE" )
+         call recv_polarize(comm)
+      case( "<POLEDIMS" )
+         call send_poledims(comm)
       case( "<TOTCHARGE" )
          call send_totcharge(comm)
       case( "<POLES" )
@@ -434,6 +450,10 @@ c
          call send_residues(comm)
       case( "<MOLECULES" )
          call send_molecules(comm)
+      case( ">MULTIPOLES" )
+         call recv_multipoles(comm)
+      case( "<MULTIPOLES" )
+         call send_poles(comm)
       case( ">NPROBES" )
          call recv_nprobes(comm)
       case( ">PROBES" )
@@ -1338,6 +1358,79 @@ c      write (*,*) probe_mask
 c
 c     #################################################################
 c     ##                                                             ##
+c     ##  subroutine recv_polarize  --  Respond to ">POLARIZE"       ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_polarize(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Recv
+      use potent , only  : use_polar
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      integer                      :: polarizability
+c
+c     recv the polarizability flag
+c
+      call MDI_Recv(polarizability, 1, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_POLARIZE -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     set the flag that controls use of the atomic dipole polarization PE term
+c
+      if ( polarizability .eq. 0 ) then
+         use_polar = .false.
+      else
+         use_polar = .true.
+      end if
+      return
+      end subroutine recv_polarize
+
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_poledims  --  Respond to "<POLEDIMS"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_poledims(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Send
+      use mpole , only  : maxpole
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: poledims, ierr
+c
+c     determine the dimensionality of the multipoles
+c
+      if ( maxpole .eq. 1 ) then
+         poledims = 1
+      else if ( maxpole .eq. 4 ) then
+         poledims = 2
+      else if ( maxpole .eq. 13 ) then
+         poledims = 3
+      else
+         write(iout,*)'SEND_POLEDIMS -- Invalid maxpole'
+         call fatal
+      end if
+c
+c     send the dimensionality of the multipoles
+c
+      call MDI_Send(poledims, 1, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_POLEDIMS -- MDI_Send failed'
+         call fatal
+      end if
+      return
+      end subroutine send_poledims
+
+c
+c     #################################################################
+c     ##                                                             ##
 c     ##  subroutine send_poles  --  Respond to "<POLES"             ##
 c     ##                                                             ##
 c     #################################################################
@@ -1354,16 +1447,16 @@ c
 c
 c     prepare the poles buffer
 c
-      allocate( poles_buf(13*npole) )
+      allocate( poles_buf(maxpole*npole) )
       do ipole=1, npole
-         do icomp=1, 13
-            poles_buf(13*(ipole-1) + icomp) = rpole(icomp, ipole)
+         do icomp=1, maxpole
+            poles_buf(maxpole*(ipole-1) + icomp) = rpole(icomp, ipole)
          end do
       end do
 c
 c     send the poles
 c
-      call MDI_Send(poles_buf, 13*npole, MDI_DOUBLE, comm, ierr)
+      call MDI_Send(poles_buf, maxpole*npole, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_POLES -- MDI_Send failed'
          call fatal
@@ -1371,6 +1464,48 @@ c
       deallocate( poles_buf )
       return
       end subroutine send_poles
+
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_multipoles  --  Respond to ">MULTIPOLES"   ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_multipoles(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
+      use mpole , only  : maxpole, npole, rpole
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, ipole, icomp
+      real*8, allocatable          :: poles_buf(:)
+      real*8                       :: conv
+c
+c     prepare the poles buffer
+c
+      allocate( poles_buf(maxpole*npole) )
+c
+c     send the poles
+c
+      call MDI_Recv(poles_buf, maxpole*npole, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_MULTIPOLES -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     set rpole
+c
+      do ipole=1, npole
+         do icomp=1, maxpole
+            rpole(icomp, ipole) = poles_buf(maxpole*(ipole-1) + icomp)
+         end do
+      end do
+      deallocate( poles_buf )
+      return
+      end subroutine recv_multipoles
+
 
 c
 c     #################################################################
