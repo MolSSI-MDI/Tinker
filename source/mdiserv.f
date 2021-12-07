@@ -113,6 +113,8 @@ c
         call MDI_Register_command("@DEFAULT", "<MASSES", ierr)
         call MDI_Register_command("@DEFAULT", ">MASSES", ierr)
         call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
+        call MDI_Register_command("@DEFAULT", "<POLARITIES", ierr)
+        call MDI_Register_command("@DEFAULT", ">POLARITIES", ierr)
         call MDI_Register_command("@DEFAULT", ">POLARIZE", ierr)
         call MDI_Register_command("@DEFAULT", "<POLEDIMS", ierr)
         call MDI_Register_command("@DEFAULT", "<TOTCHARGE", ierr)
@@ -154,6 +156,8 @@ c
         call MDI_Register_command("@INIT_MD", "<NATOMS", ierr)
         call MDI_Register_command("@INIT_MD", "<TOTCHARGE", ierr)
         call MDI_Register_command("@INIT_MD", "<NPOLES", ierr)
+        call MDI_Register_command("@INIT_MD", "<POLARITIES", ierr)
+        call MDI_Register_command("@INIT_MD", ">POLARITIES", ierr)
         call MDI_Register_command("@INIT_MD", ">POLARIZE", ierr)
         call MDI_Register_command("@INIT_MD", "<POLEDIMS", ierr)
         call MDI_Register_command("@INIT_MD", "<POLES", ierr)
@@ -191,6 +195,8 @@ c
         call MDI_Register_command("@FORCES", "<PE", ierr)
         call MDI_Register_command("@FORCES", "<TOTCHARGE", ierr)
         call MDI_Register_command("@FORCES", "<NPOLES", ierr)
+        call MDI_Register_command("@FORCES", "<POLARITIES", ierr)
+        call MDI_Register_command("@FORCES", ">POLARITIES", ierr)
         call MDI_Register_command("@FORCES", ">POLARIZE", ierr)
         call MDI_Register_command("@FORCES", "<POLEDIMS", ierr)
         call MDI_Register_command("@FORCES", "<POLES", ierr)
@@ -430,6 +436,10 @@ c
          call send_npoles(comm)
       case( "<PE" )
          call send_pe(comm)
+      case( "<POLARITIES" )
+         call send_polarities(comm)
+      case( ">POLARITIES" )
+         call recv_polarities(comm)
       case( ">POLARIZE" )
          call recv_polarize(comm)
       case( "<POLEDIMS" )
@@ -1436,27 +1446,62 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine send_poles(comm)
+      use atoms , only  : n
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, rpole
+      use mpole , only  : maxpole, npole, rpole, ipole
       implicit none
       integer, intent(in)          :: comm
-      integer                      :: ierr, ipole, icomp
+      integer                      :: ierr, iipole, iatom, icomp
+      integer                      :: stride
       real*8, allocatable          :: poles_buf(:)
       real*8                       :: conv
 c
+c     determine the stride of the multipole data
+c
+      if ( maxpole .eq. 1 ) then
+         stride = 1
+      else if ( maxpole .eq. 4 ) then
+         stride = 4
+      else if ( maxpole .eq. 13 ) then
+         stride = 9
+      end if
+c
 c     prepare the poles buffer
 c
-      allocate( poles_buf(maxpole*npole) )
-      do ipole=1, npole
-         do icomp=1, maxpole
-            poles_buf(maxpole*(ipole-1) + icomp) = rpole(icomp, ipole)
-         end do
+      allocate( poles_buf(stride*n) )
+      poles_buf = 0.0
+      do iipole=1, npole
+         iatom = ipole(iipole)
+c
+c        monopole / charge
+c
+         poles_buf(stride*(iatom-1) + 1) = rpole(1, iipole)
+         if ( stride .gt. 1 ) then
+c
+c           dipole dx, dy, and dz terms
+c
+            poles_buf(stride*(iatom-1) + 2) = rpole(2, iipole)
+            poles_buf(stride*(iatom-1) + 3) = rpole(3, iipole)
+            poles_buf(stride*(iatom-1) + 4) = rpole(4, iipole)
+         end if
+         if ( stride .gt. 4 ) then
+c
+c           quadrupole qxx, qxy, qxz, qyy, qyz terms
+c           Note: the qzz term is not necessary for traceless quadrupoles
+c              e.g., qxx + qyy + qzz = 0
+c
+            poles_buf(stride*(iatom-1) + 5) = rpole(5, iipole)
+            poles_buf(stride*(iatom-1) + 6) = rpole(6, iipole)
+            poles_buf(stride*(iatom-1) + 7) = rpole(7, iipole)
+            poles_buf(stride*(iatom-1) + 8) = rpole(9, iipole)
+            poles_buf(stride*(iatom-1) + 9) = rpole(10, iipole)
+         end if
       end do
 c
 c     send the poles
 c
-      call MDI_Send(poles_buf, maxpole*npole, MDI_DOUBLE, comm, ierr)
+      call MDI_Send(poles_buf, stride*n, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'SEND_POLES -- MDI_Send failed'
          call fatal
@@ -1474,22 +1519,33 @@ c     ##                                                             ##
 c     #################################################################
 c
       subroutine recv_multipoles(comm)
+      use atoms , only  : n
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, rpole
+      use mpole , only  : maxpole, npole, rpole, ipole
       implicit none
       integer, intent(in)          :: comm
-      integer                      :: ierr, ipole, icomp
+      integer                      :: ierr, iipole, stride, iatom
       real*8, allocatable          :: poles_buf(:)
       real*8                       :: conv
 c
+c     determine the stride of the multipole data
+c
+      if ( maxpole .eq. 1 ) then
+         stride = 1
+      else if ( maxpole .eq. 4 ) then
+         stride = 4
+      else if ( maxpole .eq. 13 ) then
+         stride = 9
+      end if
+c
 c     prepare the poles buffer
 c
-      allocate( poles_buf(maxpole*npole) )
+      allocate( poles_buf(stride*n) )
 c
 c     send the poles
 c
-      call MDI_Recv(poles_buf, maxpole*npole, MDI_DOUBLE, comm, ierr)
+      call MDI_Recv(poles_buf, stride*n, MDI_DOUBLE, comm, ierr)
       if ( ierr .ne. 0 ) then
          write(iout,*)'RECV_MULTIPOLES -- MDI_Recv failed'
          call fatal
@@ -1497,14 +1553,131 @@ c
 c
 c     set rpole
 c
-      do ipole=1, npole
-         do icomp=1, maxpole
-            rpole(icomp, ipole) = poles_buf(maxpole*(ipole-1) + icomp)
-         end do
+      do iipole=1, npole
+         iatom = ipole(iipole)
+c
+c        monopole / charge
+c
+         rpole(1, iipole) = poles_buf(stride*(iatom-1) + 1)
+         if ( stride .gt. 1 ) then
+c
+c           dipole dx, dy, and dz terms
+c
+            rpole(2, iipole) = poles_buf(stride*(iatom-1) + 2)
+            rpole(3, iipole) = poles_buf(stride*(iatom-1) + 3)
+            rpole(4, iipole) = poles_buf(stride*(iatom-1) + 4)
+         end if
+         if ( stride .gt. 4 ) then
+c
+c           quadrupole qxx, qxy, qxz, qyy, qyz terms
+c           Note: the qzz term is not necessary for traceless quadrupoles
+c              e.g., qxx + qyy + qzz = 0
+c
+            rpole(5, iipole) = poles_buf(stride*(iatom-1) + 5)
+            rpole(6, iipole) = poles_buf(stride*(iatom-1) + 6)
+            rpole(7, iipole) = poles_buf(stride*(iatom-1) + 7)
+            rpole(9, iipole) = poles_buf(stride*(iatom-1) + 8)
+            rpole(10, iipole) = poles_buf(stride*(iatom-1) + 9)
+c
+c           add the symmetry terms
+c
+            rpole(8, iipole) = poles_buf(stride*(iatom-1) + 6)
+            rpole(11, iipole) = poles_buf(stride*(iatom-1) + 7)
+            rpole(12, iipole) = poles_buf(stride*(iatom-1) + 9)
+c
+c           add the qzz term from the traceless property
+c
+            rpole(13,iipole) = -1.0*(rpole(5,iipole) - rpole(9,iipole))
+         end if
       end do
       deallocate( poles_buf )
       return
       end subroutine recv_multipoles
+
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine send_polarities  --  Respond to "<POLARITIES"   ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine send_polarities(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
+      use mpole , only  : maxpole, npole, rpole, ipole
+      use polar , only  : polarity
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iipole, iatom
+      real*8, allocatable          :: poles_buf(:)
+      real*8                       :: conv
+c
+c     prepare the poles buffer
+c
+      allocate( poles_buf(n) )
+      poles_buf = 0.0
+c
+c     get the polarities
+c
+      do iipole=1, npole
+         iatom = ipole(iipole)
+         poles_buf(iatom) = polarity(iipole)
+      end do
+c
+c     send the poles
+c
+      call MDI_Send(poles_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_POLARITIES -- MDI_Send failed'
+         call fatal
+      end if
+      deallocate( poles_buf )
+      return
+      end subroutine send_polarities
+
+
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_polarities  --  Respond to ">POLARITIES"   ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_polarities(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
+      use mpole , only  : maxpole, npole, rpole, ipole
+      use polar , only  : polarity
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, iipole, iatom
+      real*8, allocatable          :: poles_buf(:)
+      real*8                       :: conv
+c
+c     prepare the poles buffer
+c
+      allocate( poles_buf(n) )
+c
+c     send the poles
+c
+      call MDI_Recv(poles_buf, n, MDI_DOUBLE, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_POLARITIES -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     set polarity
+c
+      do iipole=1, npole
+         iatom = ipole(iipole)
+         polarity(iipole) = poles_buf(iatom)
+      end do
+      deallocate( poles_buf )
+      return
+      end subroutine recv_polarities
 
 
 c
