@@ -506,7 +506,7 @@ c
 c
 c     construct the cell_displ array
 c
-      cell_displ = 0.0
+      cell_displ = 0.0d0
 c
 c     send the cell_displ
 c
@@ -581,7 +581,7 @@ c
 c     construct the charges array
 c
       do iatom=1, n
-         charges(iatom) = 0.0
+         charges(iatom) = 0.0d0
       end do
       do iatom=1, nion
         charges(iion(iatom)) = charges(iion(iatom)) + pchg(iatom)
@@ -808,7 +808,7 @@ c
 c     get the kinetic energy
 c     there is no kinetic energy when using analyze.x
 c
-      eksum = 0.0
+      eksum = 0.0d0
       if ( TRIM(mdi_initial_caller) .ne. 'analyze' ) THEN
          call kinetic(eksum, ekin, temperature)
       end if
@@ -1295,7 +1295,7 @@ c
 c
 c     construct the charges array
 c
-      totcharge = 0.0
+      totcharge = 0.0d0
       do iatom=1, nion
         totcharge = totcharge + pchg(iatom)
       end do
@@ -1396,6 +1396,8 @@ c
       else
          use_polar = .true.
       end if
+      forces_need_update = .true.
+      analyze_need_update = .true.
       return
       end subroutine recv_polarize
 
@@ -1470,7 +1472,7 @@ c
 c     prepare the poles buffer
 c
       allocate( poles_buf(stride*n) )
-      poles_buf = 0.0
+      poles_buf = 0.0d0
       do iipole=1, npole
          iatom = ipole(iipole)
 c
@@ -1591,6 +1593,8 @@ c
          end if
       end do
       deallocate( poles_buf )
+      forces_need_update = .true.
+      analyze_need_update = .true.
       return
       end subroutine recv_multipoles
 
@@ -1617,7 +1621,7 @@ c
 c     prepare the poles buffer
 c
       allocate( poles_buf(n) )
-      poles_buf = 0.0
+      poles_buf = 0.0d0
 c
 c     get the polarities
 c
@@ -1676,6 +1680,8 @@ c
          polarity(iipole) = poles_buf(iatom)
       end do
       deallocate( poles_buf )
+      forces_need_update = .true.
+      analyze_need_update = .true.
       return
       end subroutine recv_polarities
 
@@ -1704,7 +1710,7 @@ c
       if (.not. allocated (resnum ) ) then
          allocate( resnum(n) )
       end if
-      resnum = 0.0
+      resnum = 0.0d0
 
 c
 c     prepare the residue buffer
