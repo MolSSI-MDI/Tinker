@@ -1451,7 +1451,7 @@ c
       use atoms , only  : n
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, rpole, ipole
+      use mpole , only  : maxpole, npole, pole, ipole
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iipole, iatom, icomp
@@ -1478,14 +1478,14 @@ c
 c
 c        monopole / charge
 c
-         poles_buf(stride*(iatom-1) + 1) = rpole(1, iipole)
+         poles_buf(stride*(iatom-1) + 1) = pole(1, iipole)
          if ( stride .gt. 1 ) then
 c
 c           dipole dx, dy, and dz terms
 c
-            poles_buf(stride*(iatom-1) + 2) = rpole(2, iipole)
-            poles_buf(stride*(iatom-1) + 3) = rpole(3, iipole)
-            poles_buf(stride*(iatom-1) + 4) = rpole(4, iipole)
+            poles_buf(stride*(iatom-1) + 2) = pole(2, iipole)
+            poles_buf(stride*(iatom-1) + 3) = pole(3, iipole)
+            poles_buf(stride*(iatom-1) + 4) = pole(4, iipole)
          end if
          if ( stride .gt. 4 ) then
 c
@@ -1493,11 +1493,11 @@ c           quadrupole qxx, qxy, qxz, qyy, qyz terms
 c           Note: the qzz term is not necessary for traceless quadrupoles
 c              e.g., qxx + qyy + qzz = 0
 c
-            poles_buf(stride*(iatom-1) + 5) = rpole(5, iipole)
-            poles_buf(stride*(iatom-1) + 6) = rpole(6, iipole)
-            poles_buf(stride*(iatom-1) + 7) = rpole(7, iipole)
-            poles_buf(stride*(iatom-1) + 8) = rpole(9, iipole)
-            poles_buf(stride*(iatom-1) + 9) = rpole(10, iipole)
+            poles_buf(stride*(iatom-1) + 5) = pole(5, iipole)
+            poles_buf(stride*(iatom-1) + 6) = pole(6, iipole)
+            poles_buf(stride*(iatom-1) + 7) = pole(7, iipole)
+            poles_buf(stride*(iatom-1) + 8) = pole(9, iipole)
+            poles_buf(stride*(iatom-1) + 9) = pole(10, iipole)
          end if
       end do
 c
@@ -1524,7 +1524,7 @@ c
       use atoms , only  : n
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, rpole, ipole
+      use mpole , only  : maxpole, npole, pole, ipole
       implicit none
       integer, intent(in)          :: comm
       integer                      :: ierr, iipole, stride, iatom
@@ -1560,14 +1560,14 @@ c
 c
 c        monopole / charge
 c
-         rpole(1, iipole) = poles_buf(stride*(iatom-1) + 1)
+         pole(1, iipole) = poles_buf(stride*(iatom-1) + 1)
          if ( stride .gt. 1 ) then
 c
 c           dipole dx, dy, and dz terms
 c
-            rpole(2, iipole) = poles_buf(stride*(iatom-1) + 2)
-            rpole(3, iipole) = poles_buf(stride*(iatom-1) + 3)
-            rpole(4, iipole) = poles_buf(stride*(iatom-1) + 4)
+            pole(2, iipole) = poles_buf(stride*(iatom-1) + 2)
+            pole(3, iipole) = poles_buf(stride*(iatom-1) + 3)
+            pole(4, iipole) = poles_buf(stride*(iatom-1) + 4)
          end if
          if ( stride .gt. 4 ) then
 c
@@ -1575,21 +1575,21 @@ c           quadrupole qxx, qxy, qxz, qyy, qyz terms
 c           Note: the qzz term is not necessary for traceless quadrupoles
 c              e.g., qxx + qyy + qzz = 0
 c
-            rpole(5, iipole) = poles_buf(stride*(iatom-1) + 5)
-            rpole(6, iipole) = poles_buf(stride*(iatom-1) + 6)
-            rpole(7, iipole) = poles_buf(stride*(iatom-1) + 7)
-            rpole(9, iipole) = poles_buf(stride*(iatom-1) + 8)
-            rpole(10, iipole) = poles_buf(stride*(iatom-1) + 9)
+            pole(5, iipole) = poles_buf(stride*(iatom-1) + 5)
+            pole(6, iipole) = poles_buf(stride*(iatom-1) + 6)
+            pole(7, iipole) = poles_buf(stride*(iatom-1) + 7)
+            pole(9, iipole) = poles_buf(stride*(iatom-1) + 8)
+            pole(10, iipole) = poles_buf(stride*(iatom-1) + 9)
 c
 c           add the symmetry terms
 c
-            rpole(8, iipole) = poles_buf(stride*(iatom-1) + 6)
-            rpole(11, iipole) = poles_buf(stride*(iatom-1) + 7)
-            rpole(12, iipole) = poles_buf(stride*(iatom-1) + 9)
+            pole(8, iipole) = poles_buf(stride*(iatom-1) + 6)
+            pole(11, iipole) = poles_buf(stride*(iatom-1) + 7)
+            pole(12, iipole) = poles_buf(stride*(iatom-1) + 9)
 c
 c           add the qzz term from the traceless property
 c
-            rpole(13,iipole) = -1.0*(rpole(5,iipole) - rpole(9,iipole))
+            pole(13,iipole) = -1.0*(pole(5,iipole) + pole(9,iipole))
          end if
       end do
       deallocate( poles_buf )
@@ -1610,7 +1610,7 @@ c
       use atoms , only  : n
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Send, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, rpole, ipole
+      use mpole , only  : maxpole, npole, ipole
       use polar , only  : polarity
       implicit none
       integer, intent(in)          :: comm
@@ -1653,7 +1653,7 @@ c
       use atoms , only  : n
       use iounit , only : iout
  1    use mdi , only    : MDI_DOUBLE, MDI_Recv, MDI_Conversion_Factor
-      use mpole , only  : maxpole, npole, rpole, ipole
+      use mpole , only  : maxpole, npole, ipole
       use polar , only  : polarity
       implicit none
       integer, intent(in)          :: comm
