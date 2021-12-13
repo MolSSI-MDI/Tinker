@@ -272,14 +272,15 @@ c
 c
 c     have MDI listen at the @DEFAULT and @INIT_MD nodes
 c
+      istep = 1
       if (use_mdi) then
          call mdi_listen("@DEFAULT")
          call mdi_listen("@INIT_MD")
+         if ( mdi_exit ) istep = nstep + 1
       end if
 c
 c     integrate equations of motion to take a time step
 c
-      istep = 1
       do while ( istep .le. nstep )
          if (integrate .eq. 'VERLET') then
             call verlet (istep,dt)
