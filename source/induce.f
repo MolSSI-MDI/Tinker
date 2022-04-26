@@ -666,6 +666,9 @@ c
       real*8, allocatable :: pscale(:)
       real*8 field(3,*)
       real*8 fieldp(3,*)
+      real*8, allocatable :: fieldt(:,:)
+      real*8, allocatable :: fieldtp(:,:)
+      real*8, allocatable :: dfieldt_pair(:,:,:)
       character*6 mode
 
 c
@@ -689,6 +692,9 @@ c     perform dynamic allocation of some local arrays
 c
       allocate (dscale(n))
       allocate (pscale(n))
+      allocate (fieldt(3,npole))
+      allocate (fieldtp(3,npole))
+      allocate (dfieldt_pair(3,npole,nprobes))
 c
 c     set array needed to scale atom and group interactions
 c
@@ -696,6 +702,34 @@ c
          dscale(i) = 1.0d0
          pscale(i) = 1.0d0
       end do
+c
+c     initialize local variables for OpenMP calculation
+c
+      do ii = 1, npole
+         do j = 1, 3
+            fieldt(j,ii) = 0.0d0
+            fieldtp(j,ii) = 0.0d0
+         end do
+      end do
+      do ii = 1, nprobes
+         do kk = 1, npole
+            do j = 1, 3
+               dfieldt_pair(j,kk,ii) = 0.0d0
+            end do
+         end do
+      end do
+c
+c     OpenMP directives for the major loop structure
+c
+!$OMP PARALLEL default(private)
+!$OMP& shared(npole,ipole,rpole,x,y,z,pcore,pval,palpha,n12,i12,
+!$OMP& n13,i13,n14,i14,n15,i15,np11,ip11,np12,ip12,np13,ip13,np14,ip14,
+!$OMP& p2scale,p3scale,p4scale,p5scale,p2iscale,p3iscale,p4iscale,
+!$OMP& p5iscale,d1scale,d2scale,d3scale,d4scale,dpequal,
+!$OMP& use_thole,use_chgpen,use_bounds,off2,field,fieldp,
+!$OMP& use_mdi, nprobes, probe_mask, dfield_pair)
+!$OMP& firstprivate(dscale,pscale) shared (fieldt,fieldtp,dfieldt_pair)
+!$OMP DO reduction(+:fieldt,fieldtp,dfieldt_pair) schedule(guided)
 c
 c     find the electrostatic field due to permanent multipoles
 c
@@ -888,21 +922,21 @@ c
 
                if ((use_mdi) .and. (nprobes .gt. 0)) then
                   if (probe_mask(ii) .gt. 0) then
-                     dfield_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
+                     dfieldt_pair(:, kk, probe_mask(ii)) = fid*dscale(k)
                   end if
 
                   if (probe_mask(kk) .gt. 0) then
-                     dfield_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
+                     dfieldt_pair(:, ii, probe_mask(kk)) = fkd*dscale(k)
                   end if
                end if
 c
 c     increment the direct electrostatic field components
 c
                do j = 1, 3
-                  field(j,ii) = field(j,ii) + fid(j)*dscale(k)
-                  field(j,kk) = field(j,kk) + fkd(j)*dscale(k)
-                  fieldp(j,ii) = fieldp(j,ii) + fid(j)*pscale(k)
-                  fieldp(j,kk) = fieldp(j,kk) + fkd(j)*pscale(k)
+                  fieldt(j,ii) = fieldt(j,ii) + fid(j)*dscale(k)
+                  fieldt(j,kk) = fieldt(j,kk) + fkd(j)*dscale(k)
+                  fieldtp(j,ii) = fieldtp(j,ii) + fid(j)*pscale(k)
+                  fieldtp(j,kk) = fieldtp(j,kk) + fkd(j)*pscale(k)
                end do
             end if
          end do
@@ -954,6 +988,28 @@ c
             end do
          end if
       end do
+!$OMP END DO
+c
+c     add local to global variables for OpenMP calculation
+c
+!$OMP DO
+      do ii = 1, npole
+         do j = 1, 3
+            field(j,ii) = fieldt(j,ii)
+            fieldp(j,ii) = fieldtp(j,ii)
+         end do
+      end do
+!$OMP END DO
+!$OMP DO
+      do ii = 1, nprobes
+         do kk = 1, npole
+            do j = 1, 3
+               dfield_pair(j,kk,ii) = dfieldt_pair(j,kk,ii)
+            end do
+         end do
+      end do
+!$OMP END DO
+!$OMP END PARALLEL
 c
 c     periodic boundary for large cutoffs via replicates method
 c
@@ -1224,6 +1280,8 @@ c     perform deallocation of some local arrays
 c
       deallocate (dscale)
       deallocate (pscale)
+      deallocate (fieldt)
+      deallocate (fieldtp)
       return
       end
 c
