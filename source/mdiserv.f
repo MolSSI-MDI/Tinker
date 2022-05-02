@@ -22,6 +22,8 @@ c
       logical :: mdi_exit = .false.
       logical :: use_mdi = .false.
       logical :: mdi_ignore_nodes = .false.
+c     flag whether MDI has changed the value of use_ewald
+      logical :: mdi_set_ewald = .false.
       logical :: forces_need_update = .true.
       logical :: analyze_need_update = .false.
       logical :: mdi_cycle_analyze = .false.
@@ -103,6 +105,7 @@ c     register all MDI nodes and commands
 c
         call MDI_Register_node("@DEFAULT", ierr)
         call MDI_Register_command("@DEFAULT", "EXIT", ierr)
+        call MDI_Register_command("@DEFAULT", ">ACTIVE", ierr)
         call MDI_Register_command("@DEFAULT", "<CELL", ierr)
         call MDI_Register_command("@DEFAULT", "<CELL_DISPL", ierr)
         call MDI_Register_command("@DEFAULT", "<CHARGES", ierr)
@@ -110,6 +113,7 @@ c
         call MDI_Register_command("@DEFAULT", ">COORDS", ierr)
         call MDI_Register_command("@DEFAULT", "<DIMENSIONS", ierr)
         call MDI_Register_command("@DEFAULT", "<ELEMENTS", ierr)
+        call MDI_Register_command("@DEFAULT", ">EWALD", ierr)
         call MDI_Register_command("@DEFAULT", "<MASSES", ierr)
         call MDI_Register_command("@DEFAULT", ">MASSES", ierr)
         call MDI_Register_command("@DEFAULT", "<NATOMS", ierr)
@@ -402,6 +406,8 @@ c
       select case( TRIM(command) )
       case( "EXIT" )
         call exit_mdi
+      case( ">ACTIVE" )
+         call recv_active(comm)
       case( "<CELL" )
          call send_cell(comm)
       case( "<CELL_DISPL" )
@@ -418,6 +424,8 @@ c
          call send_elements(comm)
       case( "<ENERGY" )
          call send_energy(comm)
+      case( ">EWALD" )
+         call recv_ewald(comm)
       case( "<FORCES" )
          call send_forces(comm)
       case( ">FORCES" )
@@ -488,6 +496,60 @@ c
       end select
       return
       end subroutine execute_command
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_active  --  Respond to ">ACTIVE"           ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_active(comm)
+      use atoms , only  : n
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Recv
+      use usage , only  : nuse, use, iuse
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr, i, j
+      integer, allocatable         :: mdiactive(:)
+
+      allocate( mdiactive(n) )
+c
+c     receive the list of active atoms
+c
+      call MDI_Recv(mdiactive, n, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'RECV_ACTIVE -- MDI_Recv failed'
+         call fatal
+      end if
+c
+c     set the active atoms
+c
+      if (allocated(iuse))  deallocate (iuse)
+      if (allocated(use))  deallocate (use)
+      allocate (iuse(n))
+      allocate (use(0:n))
+      nuse = 0
+      use(0) = .false.
+      do i = 1, n
+         if ( mdiactive(i) .eq. 0 ) then
+           use(i) = .false.
+         else
+           use(i) = .true.
+           nuse = nuse + 1
+         end if
+      end do
+      j = 0
+      do i = 1, n
+         if (use(i)) then
+            j = j + 1
+            iuse(j) = i
+         end if
+      end do
+
+      deallocate( mdiactive )
+      return
+      end subroutine recv_active
 c
 c     #################################################################
 c     ##                                                             ##
@@ -830,6 +892,53 @@ c
       end if
       return
       end subroutine send_energy
+c
+c     #################################################################
+c     ##                                                             ##
+c     ##  subroutine recv_ewald  --  Respond to ">EWALD"             ##
+c     ##                                                             ##
+c     #################################################################
+c
+      subroutine recv_ewald(comm)
+      use iounit , only : iout
+ 1    use mdi , only    : MDI_INT, MDI_Recv
+      use limits , only : use_ewald
+      implicit none
+      integer, intent(in)          :: comm
+      integer                      :: ierr
+      integer                      :: ewald_flag
+c
+c     receive the ewald flag
+c
+      call MDI_Recv(ewald_flag, 1, MDI_INT, comm, ierr)
+      if ( ierr .ne. 0 ) then
+         write(iout,*)'SEND_EWALD -- MDI_Send failed'
+         call fatal
+      end if
+c
+c     it is not currently possible to turn on ewald if it was never in the keyfile
+c
+      if ( .not. mdi_set_ewald ) then
+         if ( .not. use_ewald ) then
+            write(iout,*)'MDI ERROR: EWALD KEYWORD MISSING FROM KEYFILE'
+            call fatal
+         end if
+      end if
+c
+c     set the correct value of use_ewald
+c
+      if ( ewald_flag .eq. 0 ) then
+        use_ewald = .false.
+      else
+        use_ewald = .true.
+      end if
+      mdi_set_ewald = .true.
+c
+c     redo cutoff initialization
+c
+      call cutoffs
+      return
+      end subroutine recv_ewald
 c
 c     #################################################################
 c     ##                                                             ##

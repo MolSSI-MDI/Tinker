@@ -26,6 +26,7 @@ c
       use neigh
       use polpot
       use tarray
+      use mdiserv
       implicit none
       integer i,next
       integer limit
@@ -73,7 +74,9 @@ c
 c
 c     set defaults for Ewald sum, tapering style and neighbor method
 c
-      use_ewald = .false.
+      if ( .not. mdi_set_ewald ) then
+        use_ewald = .false.
+      end if
       use_dewald = .false.
       truncate = .false.
       use_lights = .false.
@@ -101,7 +104,9 @@ c
 c     get values related to use of Ewald for electrostatics
 c
          if (keyword(1:6) .eq. 'EWALD ') then
-            use_ewald = .true.
+            if ( .not. mdi_set_ewald ) then
+              use_ewald = .true.
+            end if
          else if (keyword(1:13) .eq. 'EWALD-CUTOFF ') then
             read (string,*,err=10,end=10)  ewaldcut
 c
